@@ -1,0 +1,37 @@
+{
+  "name": "quantumnest-capital",
+  "version": "1.0.0",
+  "description": "A futuristic fintech platform integrating AI, Blockchain, Data Science, and Automation",
+  "main": "index.js",
+  "scripts": {
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:start": "cd frontend && npm run start",
+    "backend:dev": "cd backend && python -m uvicorn app.main:app --reload",
+    "blockchain:compile": "cd blockchain && npx hardhat compile",
+    "blockchain:deploy:goerli": "cd blockchain && npx hardhat run scripts/deploy.js --network goerli",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/quantumnest-capital.git"
+  },
+  "keywords": [
+    "fintech",
+    "blockchain",
+    "ai",
+    "data-science",
+    "hedge-fund",
+    "defi"
+  ],
+  "author": "QuantumNest Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yourusername/quantumnest-capital/issues"
+  },
+  "homepage": "https://github.com/yourusername/quantumnest-capital#readme",
+  "workspaces": [
+    "frontend",
+    "blockchain"
+  ]
+}
