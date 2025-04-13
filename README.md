@@ -50,8 +50,8 @@ QuantumNest/
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/quantumnest-capital.git
-   cd quantumnest-capital
+   git clone https://github.com/abrar2030/QuantumNest.git
+   cd QuantumNest
    ```
 
 2. Install frontend dependencies:
