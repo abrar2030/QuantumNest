@@ -2,6 +2,8 @@
 
 A futuristic fintech platform integrating AI, Blockchain, Data Science, and Automation.
 
+> **Note**: This Project is currently under active development. Features and functionalities are being added and improved continuously to enhance user experience.
+
 ## Project Overview
 
 QuantumNest Capital is a comprehensive hedge fund platform that combines cutting-edge technologies to provide sophisticated financial services:
