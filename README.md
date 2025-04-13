@@ -2,6 +2,10 @@
 
 A futuristic fintech platform integrating AI, Blockchain, Data Science, and Automation.
 
+<div align="center">
+  <img src="QuantumNest.bmp" alt="A futuristic fintech platform" width="100%">
+</div>
+
 > **Note**: This Project is currently under active development. Features and functionalities are being added and improved continuously to enhance user experience.
 
 ## Project Overview
