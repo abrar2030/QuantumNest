@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/blockchain-explorer/page": "app/blockchain-explorer/page.js",
+  "/market-analysis/page": "app/market-analysis/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/page": "app/page.js",
+  "/portfolio/page": "app/portfolio/page.js",
+  "/recommendations/page": "app/recommendations/page.js"
+}
