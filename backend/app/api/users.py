@@ -4,7 +4,7 @@ from typing import List
 from app.db.database import get_db
 from app.models import models
 from app.schemas import schemas
-from app.main import get_current_active_user, get_password_hash
+from app.auth.auth_utils import get_current_active_user, get_password_hash
 
 router = APIRouter()
 
