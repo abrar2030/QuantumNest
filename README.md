@@ -1,25 +1,25 @@
-# Quantum Computing Investment Platform
+# QuantumNest
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/abrar2030/QuantumNest/ci-cd.yml?branch=main&label=CI&logo=github)](https://github.com/abrar2030/QuantumNest/actions)
-[![CI Status](https://img.shields.io/github/workflow/status/abrar2030/QuantumNest/CI/main?label=CI)](https://github.com/abrar2030/QuantumNest/actions)
+[![CI/CD Status](https://img.shields.io/github/actions/workflow/status/abrar2030/QuantumNest/ci-cd.yml?branch=main&label=CI/CD&logo=github)](https://github.com/abrar2030/QuantumNest/actions)
 [![Test Coverage](https://img.shields.io/codecov/c/github/abrar2030/QuantumNest/main?label=Coverage)](https://codecov.io/gh/abrar2030/QuantumNest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/github/license/abrar2030/QuantumNest)](https://github.com/abrar2030/QuantumNest/blob/main/LICENSE)
 
-## Overview
+## 🚀 AI-Powered Tokenized Asset Investment Platform
 
-QuantumNest Capital is a comprehensive hedge fund platform that combines cutting-edge technologies to provide sophisticated financial services. It integrates AI-powered analysis, blockchain technology, and modern frontend/backend architecture to deliver a powerful investment platform.
+QuantumNest is an innovative investment platform that combines artificial intelligence, blockchain technology, and quantitative finance to provide sophisticated investment strategies for tokenized assets.
 
 <div align="center">
-  <img src="docs/QuantumNest.bmp" alt="A futuristic fintech platform" width="100%">
+  <img src="docs/images/quantumnest_dashboard.png" alt="QuantumNest Dashboard" width="80%">
 </div>
 
-> **Note**: This Project is currently under active development. Features and functionalities are being added and improved continuously to enhance user experience.
+> **Note**: This project is under active development. Features and functionalities are continuously being enhanced to improve investment capabilities and user experience.
 
 ## Table of Contents
-- [Project Overview](#project-overview)
-- [Feature Implementation Status](#feature-implementation-status)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Technology Stack](#technology-stack)
+- [Architecture](#architecture)
+- [Installation and Setup](#installation-and-setup)
 - [Features](#features)
 - [Testing](#testing)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -27,111 +27,148 @@ QuantumNest Capital is a comprehensive hedge fund platform that combines cutting
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 
-## Project Overview
+## Overview
 
-QuantumNest Capital is a comprehensive hedge fund platform that combines cutting-edge technologies to provide sophisticated financial services:
+QuantumNest revolutionizes investment management by leveraging artificial intelligence and blockchain technology to create a platform where users can invest in tokenized assets with sophisticated, AI-driven strategies. The platform combines traditional financial analysis with machine learning to optimize investment decisions while using blockchain to ensure transparency, security, and fractional ownership of high-value assets.
 
-- **AI-Powered Analysis**: LSTM models for financial prediction, GARCH models for volatility forecasting, sentiment analysis, and portfolio optimization
-- **Blockchain Integration**: Asset tokenization, secure trading, portfolio management, and DeFi yield strategies
-- **Modern Frontend**: Responsive design with Next.js and Tailwind CSS
-- **Robust Backend**: FastAPI with PostgreSQL database
-- **Wallet Integration**: Support for MetaMask, WalletConnect, and Coinbase Wallet
+## Key Features
 
-## Feature Implementation Status
+### AI-Powered Investment Strategies
+- **Predictive Analytics**: Machine learning models for market prediction and trend analysis
+- **Sentiment Analysis**: Natural language processing to analyze market sentiment from news and social media
+- **Portfolio Optimization**: Advanced algorithms for risk-adjusted portfolio construction
+- **Automated Rebalancing**: Smart rebalancing based on market conditions and risk parameters
+- **Anomaly Detection**: Identification of unusual market patterns and potential opportunities
 
-| Feature | Status | Description | Planned Release |
-|---------|--------|-------------|----------------|
-| **AI-Powered Analysis** |
-| LSTM Financial Prediction | ✅ Implemented | Deep learning for price forecasting | v1.0 |
-| GARCH Volatility Models | ✅ Implemented | Statistical volatility forecasting | v1.0 |
-| Sentiment Analysis | ✅ Implemented | NLP for market sentiment | v1.0 |
-| Portfolio Optimization | ✅ Implemented | Risk-adjusted portfolio allocation | v1.0 |
-| Risk Profiling | 🔄 In Progress | User risk tolerance assessment | v1.1 |
-| AI Recommendation Engine | 🔄 In Progress | Personalized investment suggestions | v1.1 |
-| Anomaly Detection | 📅 Planned | Market anomaly identification | v1.2 |
-| **Blockchain Integration** |
-| Asset Tokenization | ✅ Implemented | Digital representation of assets | v1.0 |
-| Secure Trading | ✅ Implemented | Blockchain-based transactions | v1.0 |
-| Portfolio Management | ✅ Implemented | On-chain portfolio tracking | v1.0 |
-| DeFi Yield Strategies | 🔄 In Progress | Decentralized finance integrations | v1.1 |
-| Cross-chain Operations | 🔄 In Progress | Multi-blockchain support | v1.1 |
-| DAO Governance | 📅 Planned | Decentralized platform governance | v1.2 |
-| **Frontend Features** |
-| Responsive Design | ✅ Implemented | Mobile and desktop compatibility | v1.0 |
-| Interactive Dashboard | ✅ Implemented | Real-time data visualization | v1.0 |
-| Portfolio View | ✅ Implemented | Asset allocation display | v1.0 |
-| Market Analysis | ✅ Implemented | Technical and fundamental analysis | v1.0 |
-| Advanced Charting | 🔄 In Progress | Custom technical indicators | v1.1 |
-| Strategy Builder | 📅 Planned | Custom investment strategy creation | v1.2 |
-| **Backend Services** |
-| User Authentication | ✅ Implemented | Secure account management | v1.0 |
-| Database Integration | ✅ Implemented | PostgreSQL data persistence | v1.0 |
-| API Endpoints | ✅ Implemented | RESTful service architecture | v1.0 |
-| Real-time Updates | ✅ Implemented | WebSocket for live data | v1.0 |
-| Caching Layer | 🔄 In Progress | Redis performance optimization | v1.1 |
-| Microservices Architecture | 📅 Planned | Scalable service decomposition | v1.2 |
-| **Wallet Integration** |
-| MetaMask Support | ✅ Implemented | Popular Ethereum wallet | v1.0 |
-| WalletConnect | ✅ Implemented | Multi-wallet protocol | v1.0 |
-| Coinbase Wallet | ✅ Implemented | Mainstream crypto wallet | v1.0 |
-| Hardware Wallet Support | 🔄 In Progress | Ledger and Trezor integration | v1.1 |
-| Multi-signature Wallets | 📅 Planned | Enhanced security features | v1.2 |
+### Tokenized Asset Management
+- **Asset Tokenization**: Fractional ownership of traditional and alternative assets
+- **Blockchain Transparency**: Immutable record of ownership and transactions
+- **Smart Contract Automation**: Automated dividend distribution and governance
+- **Cross-Chain Compatibility**: Support for multiple blockchain networks
+- **Regulatory Compliance**: Built-in compliance with securities regulations
 
-**Legend:**
-- ✅ Implemented: Feature is complete and available
-- 🔄 In Progress: Feature is currently being developed
-- 📅 Planned: Feature is planned for future release
+### Quantitative Finance Tools
+- **Risk Assessment**: Sophisticated risk metrics and stress testing
+- **Performance Analytics**: Comprehensive performance measurement and attribution
+- **Factor Analysis**: Multi-factor models for investment analysis
+- **Volatility Forecasting**: GARCH models for volatility prediction
+- **Scenario Simulation**: Monte Carlo simulations for portfolio outcomes
 
-## Project Structure
+### User Experience
+- **Intuitive Dashboard**: Clear visualization of portfolio performance and analytics
+- **Personalized Recommendations**: AI-tailored investment suggestions
+- **Educational Resources**: Learning materials on investment strategies
+- **Mobile Accessibility**: Full-featured mobile application
+- **Social Features**: Community insights and expert commentary
+
+## Technology Stack
+
+### Frontend
+- **Framework**: Next.js with TypeScript
+- **State Management**: Redux Toolkit
+- **Styling**: TailwindCSS, Styled Components
+- **Data Visualization**: D3.js, Recharts, TradingView
+- **Web3 Integration**: ethers.js, web3.js
+
+### Backend
+- **Language**: Python, Node.js
+- **Framework**: FastAPI, Express
+- **Database**: PostgreSQL, MongoDB
+- **Cache**: Redis
+- **Task Queue**: Celery
+
+### AI & Machine Learning
+- **Frameworks**: TensorFlow, PyTorch, scikit-learn
+- **Time Series Analysis**: Prophet, statsmodels
+- **NLP**: Transformers, spaCy
+- **Feature Engineering**: Feature-tools, tsfresh
+- **Model Serving**: MLflow, TensorFlow Serving
+
+### Blockchain
+- **Networks**: Ethereum, Polygon, Binance Smart Chain
+- **Smart Contracts**: Solidity
+- **Development Framework**: Hardhat, Truffle
+- **Testing**: Waffle, Chai
+- **Libraries**: OpenZeppelin
+
+### DevOps
+- **Containerization**: Docker
+- **Orchestration**: Kubernetes
+- **CI/CD**: GitHub Actions
+- **Monitoring**: Prometheus, Grafana
+- **Infrastructure as Code**: Terraform
+
+## Architecture
+
+QuantumNest follows a modular architecture with the following components:
 
 ```
 QuantumNest/
-├── frontend/               # Next.js frontend application
-│   ├── components/         # Reusable UI components
-│   ├── pages/              # Application pages
-│   ├── styles/             # CSS and styling
-│   └── public/             # Static assets
-├── backend/                # FastAPI backend application
-│   ├── app/                # Main application package
-│   │   ├── api/            # API endpoints
-│   │   ├── core/           # Core functionality
-│   │   ├── db/             # Database models and connection
-│   │   ├── models/         # Data models
-│   │   ├── schemas/        # Pydantic schemas
-│   │   └── services/       # Business logic services
-│   └── venv/               # Python virtual environment
-├── blockchain/             # Blockchain integration
-│   ├── contracts/          # Smart contracts
-│   ├── scripts/            # Deployment scripts
-│   └── test/               # Contract tests
-└── docs/                   # Documentation
+├── Frontend Layer
+│   ├── User Interface
+│   ├── Data Visualization
+│   ├── Authentication
+│   └── Web3 Integration
+├── Backend Services
+│   ├── API Gateway
+│   ├── User Service
+│   ├── Portfolio Service
+│   ├── Market Data Service
+│   └── Analytics Service
+├── AI Engine
+│   ├── Prediction Models
+│   ├── Sentiment Analysis
+│   ├── Portfolio Optimization
+│   └── Risk Assessment
+├── Blockchain Layer
+│   ├── Asset Tokenization
+│   ├── Portfolio Management
+│   ├── Trading Platform
+│   └── DeFi Integration
+└── Data Layer
+    ├── Market Data
+    ├── User Data
+    ├── Transaction History
+    └── Model Training Data
 ```
 
-## Getting Started
+## Installation and Setup
 
 ### Prerequisites
+- Node.js (v14+)
+- Python (v3.8+)
+- Docker and Docker Compose
+- MetaMask or compatible Ethereum wallet
 
-- Node.js (v16+)
-- Python 3.10+
-- PostgreSQL
-- Ethereum wallet (MetaMask, WalletConnect, or Coinbase Wallet)
+### Quick Start with Setup Script
+```bash
+# Clone the repository
+git clone https://github.com/abrar2030/QuantumNest.git
+cd QuantumNest
 
-### Installation
+# Run the setup script
+./setup_quantumnest_env.sh
+
+# Start the application
+./run_quantumnest.sh
+```
+
+### Manual Setup
 
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/abrar2030/QuantumNest.git
    cd QuantumNest
    ```
 
 2. Install frontend dependencies:
-   ```
-   cd frontend
+   ```bash
+   cd web-frontend
    npm install
    ```
 
 3. Install backend dependencies:
-   ```
+   ```bash
    cd backend
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -139,7 +176,7 @@ QuantumNest/
    ```
 
 4. Install blockchain dependencies:
-   ```
+   ```bash
    cd blockchain
    npm install
    ```
@@ -150,63 +187,59 @@ QuantumNest/
 ### Running the Application
 
 1. Start the frontend development server:
-   ```
+   ```bash
    npm run frontend:dev
    ```
 
 2. Start the backend server:
-   ```
+   ```bash
    npm run backend:dev
    ```
 
 3. Compile smart contracts:
-   ```
+   ```bash
    npm run blockchain:compile
    ```
 
 4. Deploy smart contracts to Goerli testnet:
-   ```
+   ```bash
    npm run blockchain:deploy:goerli
    ```
 
 ## Features
 
 ### Frontend
-
-- Home page with platform overview
-- Portfolio management dashboard
-- Market analysis with interactive charts
-- AI-powered investment recommendations
-- Blockchain explorer for transaction monitoring
-- User dashboard with performance metrics
-- Admin panel for platform management
+- **Home Page**: Platform overview with key features and benefits
+- **Portfolio Dashboard**: Comprehensive view of investment holdings and performance
+- **Market Analysis**: Interactive charts and visualizations of market trends
+- **AI Recommendations**: Personalized investment suggestions based on user profile
+- **Blockchain Explorer**: Transparent view of on-chain transactions and assets
+- **User Dashboard**: Performance metrics, settings, and account management
+- **Admin Panel**: Platform management tools for administrators
 
 ### Backend
-
-- User authentication with JWT
-- Portfolio management APIs
-- Market data integration
-- AI model endpoints
-- Blockchain interaction services
-- Admin control APIs
+- **User Authentication**: Secure JWT-based authentication system
+- **Portfolio Management**: APIs for creating and managing investment portfolios
+- **Market Data Integration**: Real-time and historical market data processing
+- **AI Model Endpoints**: API access to machine learning predictions
+- **Blockchain Interaction**: Services for interacting with smart contracts
+- **Admin Controls**: Administrative functions and platform management
 
 ### AI Models
-
-- LSTM models for financial prediction
-- GARCH models for volatility forecasting
-- Sentiment analysis for market trends
-- PCA for market analysis
-- Portfolio optimization algorithms
-- Risk profiling system
-- AI recommendation engine
+- **LSTM Models**: Long Short-Term Memory networks for financial time series prediction
+- **GARCH Models**: Generalized Autoregressive Conditional Heteroskedasticity for volatility forecasting
+- **Sentiment Analysis**: NLP models for analyzing market sentiment from news and social media
+- **PCA**: Principal Component Analysis for dimensionality reduction in market analysis
+- **Portfolio Optimization**: Mean-variance optimization and alternative approaches
+- **Risk Profiling**: User risk tolerance assessment and matching
+- **Recommendation Engine**: Collaborative and content-based filtering for investment suggestions
 
 ### Blockchain
-
-- TokenizedAsset contract for asset tokenization
-- PortfolioManager contract for on-chain portfolio management
-- TradingPlatform contract for secure trading
-- DeFiIntegration contract for yield strategies
-- TestToken contract for testing
+- **TokenizedAsset**: Smart contract for representing real-world assets on-chain
+- **PortfolioManager**: Contract for on-chain portfolio management and tracking
+- **TradingPlatform**: Decentralized exchange functionality for tokenized assets
+- **DeFiIntegration**: Connections to DeFi protocols for yield strategies
+- **TestToken**: ERC-20 token for testing platform functionality
 
 ## Testing
 
@@ -216,28 +249,31 @@ The project includes comprehensive testing to ensure reliability and security:
 - Component tests with React Testing Library
 - End-to-end tests with Cypress
 - Visual regression tests with Percy
+- Accessibility testing with axe-core
 
 ### Backend Testing
 - Unit tests with pytest
 - API integration tests
 - Database interaction tests
 - Performance benchmarks
+- Security testing
 
 ### Blockchain Testing
 - Smart contract unit tests with Hardhat
 - Integration tests for contract interactions
 - Security audits with Slither and MythX
+- Gas optimization analysis
 
 ### AI Model Testing
 - Model validation with cross-validation
 - Backtesting against historical data
 - Performance metrics evaluation
+- A/B testing for model improvements
 
 To run tests:
-
 ```bash
 # Frontend tests
-cd frontend
+cd web-frontend
 npm test
 
 # Backend tests
@@ -261,17 +297,18 @@ QuantumNest uses GitHub Actions for continuous integration and deployment:
 - Code quality checks with ESLint, Prettier, and Pylint
 - Test coverage reporting
 - Security scanning for vulnerabilities
+- Performance benchmarking
 
 ### Continuous Deployment
 - Automated deployment to staging environment on merge to main
 - Manual promotion to production after approval
 - Docker image building and publishing
 - Infrastructure updates via Terraform
+- Database migration management
 
 Current CI/CD Status:
-- Build: ![Build Status](https://img.shields.io/github/workflow/status/abrar2030/QuantumNest/CI/main?label=build)
+- Build: ![Build Status](https://img.shields.io/github/actions/workflow/status/abrar2030/QuantumNest/ci-cd.yml?branch=main&label=build)
 - Test Coverage: ![Coverage](https://img.shields.io/codecov/c/github/abrar2030/QuantumNest/main?label=coverage)
-- Code Quality: ![Code Quality](https://img.shields.io/codacy/grade/abrar2030/QuantumNest?label=code%20quality)
 
 ## Contributing
 
@@ -303,7 +340,6 @@ We welcome contributions to improve QuantumNest! Here's how you can contribute:
    - Respond to review comments and make necessary adjustments
 
 ### Development Guidelines
-
 - Follow PEP 8 style guide for Python code
 - Use ESLint and Prettier for JavaScript/React code
 - Follow Solidity best practices for smart contracts
@@ -314,7 +350,7 @@ We welcome contributions to improve QuantumNest! Here's how you can contribute:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -322,3 +358,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - TailwindCSS for the UI framework
 - FastAPI for the backend framework
 - Next.js for the frontend framework
+- The open-source community for various tools and libraries
