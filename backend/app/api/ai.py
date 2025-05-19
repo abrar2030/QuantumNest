@@ -1,32 +1,60 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from app.db.database import get_db
 from app.models import models
 from app.schemas import schemas
 from app.main import get_current_active_user
+from app.workers.ai_tasks import (
+    predict_asset_price,
+    analyze_sentiment,
+    optimize_portfolio,
+    analyze_portfolio_risk,
+    generate_market_recommendations
+)
+from celery.result import AsyncResult
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Task status tracking
+task_status_cache = {}
 
 @router.get("/models/", response_model=List[schemas.AIModel])
-def get_ai_models(skip: int = 0, limit: int = 100, db: Session = Depends(get_db),
-                 current_user: schemas.User = Depends(get_current_active_user)):
+async def get_ai_models(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """Get available AI models"""
     ai_models = db.query(models.AIModel).offset(skip).limit(limit).all()
     return ai_models
 
 @router.get("/models/{model_id}", response_model=schemas.AIModel)
-def get_ai_model(model_id: int, db: Session = Depends(get_db),
-                current_user: schemas.User = Depends(get_current_active_user)):
+async def get_ai_model(
+    model_id: int, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """Get specific AI model by ID"""
     db_model = db.query(models.AIModel).filter(models.AIModel.id == model_id).first()
     if db_model is None:
         raise HTTPException(status_code=404, detail="AI model not found")
     return db_model
 
 @router.get("/predictions/", response_model=List[schemas.AIPrediction])
-def get_predictions(skip: int = 0, limit: int = 100, model_id: Optional[int] = None, 
-                   asset_id: Optional[int] = None, db: Session = Depends(get_db),
-                   current_user: schemas.User = Depends(get_current_active_user)):
+async def get_predictions(
+    skip: int = 0, 
+    limit: int = 100, 
+    model_id: Optional[int] = None, 
+    asset_id: Optional[int] = None, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """Get AI predictions with optional filtering"""
     query = db.query(models.AIPrediction)
     if model_id:
         query = query.filter(models.AIPrediction.model_id == model_id)
@@ -36,16 +64,337 @@ def get_predictions(skip: int = 0, limit: int = 100, model_id: Optional[int] = N
     return predictions
 
 @router.get("/predictions/{prediction_id}", response_model=schemas.AIPrediction)
-def get_prediction(prediction_id: int, db: Session = Depends(get_db),
-                  current_user: schemas.User = Depends(get_current_active_user)):
+async def get_prediction(
+    prediction_id: int, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """Get specific AI prediction by ID"""
     db_prediction = db.query(models.AIPrediction).filter(models.AIPrediction.id == prediction_id).first()
     if db_prediction is None:
         raise HTTPException(status_code=404, detail="Prediction not found")
     return db_prediction
 
-@router.get("/recommendations/portfolio/{portfolio_id}")
-def get_portfolio_recommendations(portfolio_id: int, db: Session = Depends(get_db),
-                                 current_user: schemas.User = Depends(get_current_active_user)):
+@router.post("/predict/asset/{asset_symbol}")
+async def predict_asset_future(
+    asset_symbol: str,
+    days_ahead: int = 5,
+    model_type: str = "lstm",
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Predict future asset price asynchronously
+    
+    This endpoint triggers an asynchronous task and returns a task ID
+    that can be used to check the status and retrieve results
+    """
+    try:
+        # Submit task to Celery worker
+        task = predict_asset_price.delay(asset_symbol, days_ahead, model_type)
+        
+        # Store task info
+        task_info = {
+            "task_id": task.id,
+            "status": "PENDING",
+            "user_id": current_user.id,
+            "created_at": datetime.now().isoformat(),
+            "task_type": "asset_price_prediction",
+            "parameters": {
+                "asset_symbol": asset_symbol,
+                "days_ahead": days_ahead,
+                "model_type": model_type
+            }
+        }
+        
+        # Store in cache (in production, use Redis or database)
+        task_status_cache[task.id] = task_info
+        
+        # Return task ID for status checking
+        return {
+            "task_id": task.id,
+            "status": "PENDING",
+            "message": f"Prediction task for {asset_symbol} submitted successfully",
+            "check_status_endpoint": f"/ai/tasks/{task.id}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting prediction task: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit prediction task: {str(e)}"
+        )
+
+@router.get("/tasks/{task_id}")
+async def get_task_status(
+    task_id: str,
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Check status of an asynchronous AI task
+    
+    Returns task status and result if available
+    """
+    try:
+        # Get task result from Celery
+        task_result = AsyncResult(task_id)
+        
+        # Get cached task info
+        task_info = task_status_cache.get(task_id, {})
+        
+        # Check if task belongs to current user
+        if task_info.get("user_id") and task_info.get("user_id") != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to access this task"
+            )
+        
+        # Prepare response
+        response = {
+            "task_id": task_id,
+            "status": task_result.status,
+            "task_type": task_info.get("task_type", "unknown"),
+            "created_at": task_info.get("created_at"),
+            "parameters": task_info.get("parameters", {})
+        }
+        
+        # Include result if ready
+        if task_result.ready():
+            if task_result.successful():
+                response["result"] = task_result.result
+            else:
+                response["error"] = str(task_result.result)
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error checking task status: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to check task status: {str(e)}"
+        )
+
+@router.post("/sentiment/asset/{asset_symbol}")
+async def analyze_asset_sentiment(
+    asset_symbol: str,
+    sources: Optional[List[str]] = None,
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Analyze sentiment for an asset asynchronously
+    
+    This endpoint triggers an asynchronous task and returns a task ID
+    that can be used to check the status and retrieve results
+    """
+    try:
+        # Submit task to Celery worker
+        task = analyze_sentiment.delay(asset_symbol, sources)
+        
+        # Store task info
+        task_info = {
+            "task_id": task.id,
+            "status": "PENDING",
+            "user_id": current_user.id,
+            "created_at": datetime.now().isoformat(),
+            "task_type": "sentiment_analysis",
+            "parameters": {
+                "asset_symbol": asset_symbol,
+                "sources": sources
+            }
+        }
+        
+        # Store in cache (in production, use Redis or database)
+        task_status_cache[task.id] = task_info
+        
+        # Return task ID for status checking
+        return {
+            "task_id": task.id,
+            "status": "PENDING",
+            "message": f"Sentiment analysis task for {asset_symbol} submitted successfully",
+            "check_status_endpoint": f"/ai/tasks/{task.id}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting sentiment analysis task: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit sentiment analysis task: {str(e)}"
+        )
+
+@router.post("/optimize/portfolio/{portfolio_id}")
+async def optimize_user_portfolio(
+    portfolio_id: int,
+    risk_tolerance: Optional[float] = None,
+    constraints: Optional[Dict[str, Any]] = None,
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Optimize portfolio allocation asynchronously
+    
+    This endpoint triggers an asynchronous task and returns a task ID
+    that can be used to check the status and retrieve results
+    """
+    try:
+        # Verify portfolio belongs to user
+        db_portfolio = db.query(models.Portfolio).filter(
+            models.Portfolio.id == portfolio_id,
+            models.Portfolio.owner_id == current_user.id
+        ).first()
+        
+        if db_portfolio is None:
+            raise HTTPException(status_code=404, detail="Portfolio not found")
+        
+        # Submit task to Celery worker
+        task = optimize_portfolio.delay(portfolio_id, risk_tolerance, constraints)
+        
+        # Store task info
+        task_info = {
+            "task_id": task.id,
+            "status": "PENDING",
+            "user_id": current_user.id,
+            "created_at": datetime.now().isoformat(),
+            "task_type": "portfolio_optimization",
+            "parameters": {
+                "portfolio_id": portfolio_id,
+                "risk_tolerance": risk_tolerance,
+                "constraints": constraints
+            }
+        }
+        
+        # Store in cache (in production, use Redis or database)
+        task_status_cache[task.id] = task_info
+        
+        # Return task ID for status checking
+        return {
+            "task_id": task.id,
+            "status": "PENDING",
+            "message": f"Portfolio optimization task for portfolio {portfolio_id} submitted successfully",
+            "check_status_endpoint": f"/ai/tasks/{task.id}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting portfolio optimization task: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit portfolio optimization task: {str(e)}"
+        )
+
+@router.post("/risk/portfolio/{portfolio_id}")
+async def analyze_portfolio_risk_async(
+    portfolio_id: int,
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Analyze portfolio risk asynchronously
+    
+    This endpoint triggers an asynchronous task and returns a task ID
+    that can be used to check the status and retrieve results
+    """
+    try:
+        # Verify portfolio belongs to user
+        db_portfolio = db.query(models.Portfolio).filter(
+            models.Portfolio.id == portfolio_id,
+            models.Portfolio.owner_id == current_user.id
+        ).first()
+        
+        if db_portfolio is None:
+            raise HTTPException(status_code=404, detail="Portfolio not found")
+        
+        # Submit task to Celery worker
+        task = analyze_portfolio_risk.delay(portfolio_id)
+        
+        # Store task info
+        task_info = {
+            "task_id": task.id,
+            "status": "PENDING",
+            "user_id": current_user.id,
+            "created_at": datetime.now().isoformat(),
+            "task_type": "portfolio_risk_analysis",
+            "parameters": {
+                "portfolio_id": portfolio_id
+            }
+        }
+        
+        # Store in cache (in production, use Redis or database)
+        task_status_cache[task.id] = task_info
+        
+        # Return task ID for status checking
+        return {
+            "task_id": task.id,
+            "status": "PENDING",
+            "message": f"Portfolio risk analysis task for portfolio {portfolio_id} submitted successfully",
+            "check_status_endpoint": f"/ai/tasks/{task.id}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting portfolio risk analysis task: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit portfolio risk analysis task: {str(e)}"
+        )
+
+@router.post("/recommendations/market")
+async def get_market_recommendations_async(
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    Generate market recommendations asynchronously
+    
+    This endpoint triggers an asynchronous task and returns a task ID
+    that can be used to check the status and retrieve results
+    """
+    try:
+        # Submit task to Celery worker
+        task = generate_market_recommendations.delay()
+        
+        # Store task info
+        task_info = {
+            "task_id": task.id,
+            "status": "PENDING",
+            "user_id": current_user.id,
+            "created_at": datetime.now().isoformat(),
+            "task_type": "market_recommendations",
+            "parameters": {}
+        }
+        
+        # Store in cache (in production, use Redis or database)
+        task_status_cache[task.id] = task_info
+        
+        # Return task ID for status checking
+        return {
+            "task_id": task.id,
+            "status": "PENDING",
+            "message": "Market recommendations task submitted successfully",
+            "check_status_endpoint": f"/ai/tasks/{task.id}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error submitting market recommendations task: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit market recommendations task: {str(e)}"
+        )
+
+# Legacy synchronous endpoints - kept for backward compatibility but marked as deprecated
+@router.get("/recommendations/portfolio/{portfolio_id}", deprecated=True)
+async def get_portfolio_recommendations_legacy(
+    portfolio_id: int, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    DEPRECATED: Get portfolio recommendations synchronously
+    Use the asynchronous endpoint /ai/optimize/portfolio/{portfolio_id} instead
+    """
     # Verify portfolio belongs to user
     db_portfolio = db.query(models.Portfolio).filter(
         models.Portfolio.id == portfolio_id,
@@ -85,9 +434,15 @@ def get_portfolio_recommendations(portfolio_id: int, db: Session = Depends(get_d
     }
     return recommendations
 
-@router.get("/recommendations/market")
-def get_market_recommendations(db: Session = Depends(get_db),
-                              current_user: schemas.User = Depends(get_current_active_user)):
+@router.get("/recommendations/market", deprecated=True)
+async def get_market_recommendations_legacy(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    DEPRECATED: Get market recommendations synchronously
+    Use the asynchronous endpoint /ai/recommendations/market instead
+    """
     # This would be implemented with actual AI market recommendation logic
     # For now, return mock data
     recommendations = {
@@ -151,9 +506,16 @@ def get_market_recommendations(db: Session = Depends(get_db),
     }
     return recommendations
 
-@router.get("/sentiment/asset/{asset_symbol}")
-def get_asset_sentiment(asset_symbol: str, db: Session = Depends(get_db),
-                       current_user: schemas.User = Depends(get_current_active_user)):
+@router.get("/sentiment/asset/{asset_symbol}", deprecated=True)
+async def get_asset_sentiment_legacy(
+    asset_symbol: str, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    DEPRECATED: Get asset sentiment analysis synchronously
+    Use the asynchronous endpoint /ai/sentiment/asset/{asset_symbol} instead
+    """
     # This would be implemented with actual sentiment analysis
     # For now, return mock data
     sentiment = {
@@ -199,9 +561,16 @@ def get_asset_sentiment(asset_symbol: str, db: Session = Depends(get_db),
     }
     return sentiment
 
-@router.get("/risk/portfolio/{portfolio_id}")
-def get_portfolio_risk_analysis(portfolio_id: int, db: Session = Depends(get_db),
-                               current_user: schemas.User = Depends(get_current_active_user)):
+@router.get("/risk/portfolio/{portfolio_id}", deprecated=True)
+async def get_portfolio_risk_analysis_legacy(
+    portfolio_id: int, 
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """
+    DEPRECATED: Get portfolio risk analysis synchronously
+    Use the asynchronous endpoint /ai/risk/portfolio/{portfolio_id} instead
+    """
     # Verify portfolio belongs to user
     db_portfolio = db.query(models.Portfolio).filter(
         models.Portfolio.id == portfolio_id,
