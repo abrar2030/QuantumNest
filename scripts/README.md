@@ -77,7 +77,7 @@ Checks the health and versions of all dependencies across the QuantumNest projec
 - `fix [component]` - Attempt to fix dependency issues (optional: specify component)
 - `help` - Display help message
 
-### 4. CI/CD Enhancer (`cicd_enhancer.sh`)
+### 4. CI/CD Enhancer (`cicd.sh`)
 
 Provides additional CI/CD capabilities to complement the existing GitHub Actions workflow.
 
@@ -90,7 +90,7 @@ Provides additional CI/CD capabilities to complement the existing GitHub Actions
 
 **Usage:**
 ```bash
-./cicd_enhancer.sh [COMMAND]
+./cicd.sh [COMMAND]
 ```
 
 **Commands:**
