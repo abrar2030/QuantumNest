@@ -49,7 +49,9 @@ export function formatDateWithTime(date: Date | string | number): string {
 }
 
 export function formatNumber(value: number, maximumFractionDigits = 2): string {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(
+    value,
+  );
 }
 
 export function formatCompactNumber(value: number): string {
@@ -67,14 +69,19 @@ export function getInitials(name?: string | null, fallback = "QN"): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-export function displayName(user?: {
-  first_name?: string | null;
-  last_name?: string | null;
-  username?: string | null;
-  email?: string | null;
-} | null): string {
+export function displayName(
+  user?: {
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+    email?: string | null;
+  } | null,
+): string {
   if (!user) return "";
-  const full = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  const full = [user.first_name, user.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   if (full) return full;
   if (user.username) return user.username;
   if (user.email) return user.email.split("@")[0];

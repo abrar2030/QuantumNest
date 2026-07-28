@@ -1,4 +1,9 @@
-import { formatCurrency, formatPercentage, getInitials, shortenAddress } from "../utils";
+import {
+  formatCurrency,
+  formatPercentage,
+  getInitials,
+  shortenAddress,
+} from "../utils";
 
 describe("Utils", () => {
   describe("formatCurrency", () => {

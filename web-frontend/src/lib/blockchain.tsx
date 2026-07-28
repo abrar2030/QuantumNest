@@ -13,7 +13,10 @@ import {
 interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
   on: (event: string, handler: (...args: unknown[]) => void) => void;
-  removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+  removeListener: (
+    event: string,
+    handler: (...args: unknown[]) => void,
+  ) => void;
 }
 
 declare global {
@@ -44,9 +47,8 @@ const BlockchainContext = createContext<BlockchainContextType | undefined>(
 );
 
 export function BlockchainProvider({ children }: { children: ReactNode }) {
-  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(
-    null,
-  );
+  const [provider, setProvider] =
+    useState<ethers.providers.Web3Provider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
@@ -91,7 +93,8 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
 
       setIsConnected(true);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to connect wallet";
+      const message =
+        err instanceof Error ? err.message : "Failed to connect wallet";
       setError(message);
       setIsConnected(false);
     } finally {
@@ -107,7 +110,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
 
     async function checkExistingConnection() {
       try {
-        const web3Provider = new ethers.providers.Web3Provider(window.ethereum!);
+        const web3Provider = new ethers.providers.Web3Provider(
+          window.ethereum!,
+        );
         const accounts = await web3Provider.listAccounts();
         if (cancelled || accounts.length === 0) return;
 
@@ -184,7 +189,9 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <BlockchainContext.Provider value={value}>{children}</BlockchainContext.Provider>
+    <BlockchainContext.Provider value={value}>
+      {children}
+    </BlockchainContext.Provider>
   );
 }
 

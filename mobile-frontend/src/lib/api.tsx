@@ -28,9 +28,17 @@ interface ApiContextType {
   token: string | null;
   setToken: (token: string | null) => void;
   get: <T>(endpoint: string, params?: QueryParams) => Promise<T>;
-  post: <T>(endpoint: string, data?: unknown, params?: QueryParams) => Promise<T>;
+  post: <T>(
+    endpoint: string,
+    data?: unknown,
+    params?: QueryParams,
+  ) => Promise<T>;
   postForm: <T>(endpoint: string, form: URLSearchParams) => Promise<T>;
-  put: <T>(endpoint: string, data?: unknown, params?: QueryParams) => Promise<T>;
+  put: <T>(
+    endpoint: string,
+    data?: unknown,
+    params?: QueryParams,
+  ) => Promise<T>;
   del: <T>(endpoint: string, params?: QueryParams) => Promise<T>;
 }
 
@@ -117,22 +125,32 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 
   const get = useCallback(
     async <T,>(endpoint: string, params?: QueryParams): Promise<T> => {
-      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
-        method: "GET",
-        headers: authHeaders(),
-      });
+      const response = await fetch(
+        `${apiUrl}${endpoint}${buildQuery(params)}`,
+        {
+          method: "GET",
+          headers: authHeaders(),
+        },
+      );
       return handleResponse(response) as Promise<T>;
     },
     [apiUrl, authHeaders, handleResponse],
   );
 
   const post = useCallback(
-    async <T,>(endpoint: string, data?: unknown, params?: QueryParams): Promise<T> => {
-      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: data !== undefined ? JSON.stringify(data) : undefined,
-      });
+    async <T,>(
+      endpoint: string,
+      data?: unknown,
+      params?: QueryParams,
+    ): Promise<T> => {
+      const response = await fetch(
+        `${apiUrl}${endpoint}${buildQuery(params)}`,
+        {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: data !== undefined ? JSON.stringify(data) : undefined,
+        },
+      );
       return handleResponse(response) as Promise<T>;
     },
     [apiUrl, authHeaders, handleResponse],
@@ -153,12 +171,19 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   );
 
   const put = useCallback(
-    async <T,>(endpoint: string, data?: unknown, params?: QueryParams): Promise<T> => {
-      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
-        method: "PUT",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: data !== undefined ? JSON.stringify(data) : undefined,
-      });
+    async <T,>(
+      endpoint: string,
+      data?: unknown,
+      params?: QueryParams,
+    ): Promise<T> => {
+      const response = await fetch(
+        `${apiUrl}${endpoint}${buildQuery(params)}`,
+        {
+          method: "PUT",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: data !== undefined ? JSON.stringify(data) : undefined,
+        },
+      );
       return handleResponse(response) as Promise<T>;
     },
     [apiUrl, authHeaders, handleResponse],
@@ -166,10 +191,13 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 
   const del = useCallback(
     async <T,>(endpoint: string, params?: QueryParams): Promise<T> => {
-      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      });
+      const response = await fetch(
+        `${apiUrl}${endpoint}${buildQuery(params)}`,
+        {
+          method: "DELETE",
+          headers: authHeaders(),
+        },
+      );
       return handleResponse(response) as Promise<T>;
     },
     [apiUrl, authHeaders, handleResponse],

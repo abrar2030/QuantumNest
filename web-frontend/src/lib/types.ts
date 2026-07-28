@@ -1,20 +1,13 @@
 // Types mirror code/backend/app/schemas/schemas.py
 
 export type UserRole =
-  | "admin"
-  | "portfolio_manager"
-  | "analyst"
-  | "user"
-  | "api_user";
+  "admin" | "portfolio_manager" | "analyst" | "user" | "api_user";
 
 export type UserTier =
-  | "basic"
-  | "premium"
-  | "professional"
-  | "enterprise"
-  | "institutional";
+  "basic" | "premium" | "professional" | "enterprise" | "institutional";
 
-export type UserStatus = "active" | "inactive" | "suspended" | "pending_verification";
+export type UserStatus =
+  "active" | "inactive" | "suspended" | "pending_verification";
 
 export type RiskLevel = "very_low" | "low" | "moderate" | "high" | "very_high";
 
@@ -29,12 +22,7 @@ export type TransactionType =
   | "transfer";
 
 export type TransactionStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "rejected";
+  "pending" | "processing" | "completed" | "failed" | "cancelled" | "rejected";
 
 export interface User {
   id: number;
@@ -428,7 +416,12 @@ export interface AdminDashboard {
     error_rate: number;
     active_sessions: number;
   };
-  alerts: Array<{ id: number; type: string; message: string; timestamp: string }>;
+  alerts: Array<{
+    id: number;
+    type: string;
+    message: string;
+    timestamp: string;
+  }>;
 }
 
 export interface AdminUserRow {

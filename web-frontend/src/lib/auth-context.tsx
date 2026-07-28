@@ -88,7 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener("quantumnest:unauthorized", handleUnauthorized);
     return () =>
-      window.removeEventListener("quantumnest:unauthorized", handleUnauthorized);
+      window.removeEventListener(
+        "quantumnest:unauthorized",
+        handleUnauthorized,
+      );
   }, [setToken]);
 
   const login = useCallback(
