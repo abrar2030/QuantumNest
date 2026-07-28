@@ -190,21 +190,14 @@ cd QuantumNest
 
 ### Manual Setup
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/quantsingularity/QuantumNest.git
-cd QuantumNest
-```
-
-2. Install frontend dependencies:
+1. Install frontend dependencies:
 
 ```bash
 cd web-frontend
 npm install
 ```
 
-3. Install backend dependencies:
+2. Install backend dependencies:
 
 ```bash
 cd backend
@@ -213,14 +206,14 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Install blockchain dependencies:
+3. Install blockchain dependencies:
 
 ```bash
 cd blockchain
 npm install
 ```
 
-5. Set up environment variables:
+4. Set up environment variables:
    - Create `.env` files in both frontend and blockchain directories based on the provided `.env.example` files
 
 ### Running the Application
