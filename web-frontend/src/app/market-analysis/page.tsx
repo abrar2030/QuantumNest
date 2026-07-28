@@ -1,408 +1,462 @@
 "use client";
 
-import { useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { AssetCard, StatCard } from "@/components/ui/Cards";
-import { BarChart, LineChart } from "@/components/ui/Charts";
+import { useEffect, useState } from "react";
+import { Newspaper, Search, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/finance/page-header";
+import { ChangeBadge } from "@/components/finance/change-badge";
+import { PerformanceBarChart } from "@/components/finance/bar-chart";
+import { TrendChart } from "@/components/finance/trend-chart";
+import { EmptyState, ErrorState } from "@/components/finance/empty-state";
+import { useApi } from "@/lib/api";
+import { formatCurrency, formatDateWithTime } from "@/lib/utils";
+import type {
+  Asset,
+  AssetPriceHistory,
+  MarketNewsResponse,
+  MarketSummary,
+  SectorPerformanceResponse,
+} from "@/lib/types";
 
-export default function MarketAnalysis() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [timeRange, setTimeRange] = useState("1m");
+const sentimentStyle: Record<string, string> = {
+  bullish: "bg-success/10 text-success hover:bg-success/10",
+  bearish: "bg-destructive/10 text-destructive hover:bg-destructive/10",
+  neutral: "bg-muted text-muted-foreground",
+};
 
-  // Mock data for market overview
-  const marketStats = [
-    { title: "S&P 500", value: "5,320.45", change: 0.85 },
-    { title: "NASDAQ", value: "16,780.32", change: 1.25 },
-    { title: "Bitcoin", value: "$65,420.75", change: -2.15 },
-    { title: "Ethereum", value: "$3,240.50", change: 0.65 },
-  ];
+function OverviewTab() {
+  const { get } = useApi();
+  const [summary, setSummary] = useState<MarketSummary | null>(null);
+  const [sectors, setSectors] = useState<SectorPerformanceResponse | null>(
+    null,
+  );
+  const [news, setNews] = useState<MarketNewsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data for trending assets
-  const trendingAssets = [
-    {
-      symbol: "AAPL",
-      name: "Apple Inc.",
-      price: 180.5,
-      change24h: 1.2,
-      marketCap: 2850000000000,
-      volume24h: 15200000000,
-    },
-    {
-      symbol: "NVDA",
-      name: "NVIDIA Corporation",
-      price: 950.25,
-      change24h: 3.5,
-      marketCap: 2350000000000,
-      volume24h: 25600000000,
-    },
-    {
-      symbol: "TSLA",
-      name: "Tesla, Inc.",
-      price: 210.75,
-      change24h: -1.8,
-      marketCap: 670000000000,
-      volume24h: 18900000000,
-    },
-    {
-      symbol: "BTC",
-      name: "Bitcoin",
-      price: 65420.75,
-      change24h: -2.15,
-      marketCap: 1280000000000,
-      volume24h: 42500000000,
-    },
-    {
-      symbol: "ETH",
-      name: "Ethereum",
-      price: 3240.5,
-      change24h: 0.65,
-      marketCap: 390000000000,
-      volume24h: 21300000000,
-    },
-    {
-      symbol: "MSFT",
-      name: "Microsoft Corporation",
-      price: 410.25,
-      change24h: 0.9,
-      marketCap: 3050000000000,
-      volume24h: 12800000000,
-    },
-  ];
+  async function load() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [s, sec, n] = await Promise.all([
+        get<MarketSummary>("/market/market_summary"),
+        get<SectorPerformanceResponse>("/market/sector_performance", {
+          period: "1m",
+        }),
+        get<MarketNewsResponse>("/market/market_news", { limit: 6 }),
+      ]);
+      setSummary(s);
+      setSectors(sec);
+      setNews(n);
+    } catch {
+      setError("We couldn't load market data right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
-  // Mock data for market performance chart
-  const marketPerformanceData = {
-    labels: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
-    datasets: [
-      {
-        label: "S&P 500",
-        data: [
-          4800, 4750, 4900, 5000, 5100, 5050, 5150, 5200, 5250, 5300, 5350,
-          5320,
-        ],
-        borderColor: "rgba(99, 102, 241, 1)",
-        backgroundColor: "rgba(99, 102, 241, 0.1)",
-        fill: false,
-      },
-      {
-        label: "NASDAQ",
-        data: [
-          15000, 14800, 15200, 15500, 15800, 15600, 16000, 16200, 16400, 16600,
-          16700, 16780,
-        ],
-        borderColor: "rgba(79, 70, 229, 1)",
-        backgroundColor: "rgba(79, 70, 229, 0.1)",
-        fill: false,
-      },
-    ],
-  };
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Mock data for sector performance
-  const sectorPerformanceData = {
-    labels: [
-      "Technology",
-      "Healthcare",
-      "Finance",
-      "Energy",
-      "Consumer",
-      "Utilities",
-      "Real Estate",
-    ],
-    datasets: [
-      {
-        label: "Sector Performance (%)",
-        data: [12.5, 8.2, 5.4, -2.1, 3.8, 1.5, -0.8],
-        backgroundColor: [
-          "rgba(99, 102, 241, 0.8)",
-          "rgba(79, 70, 229, 0.8)",
-          "rgba(67, 56, 202, 0.8)",
-          "rgba(55, 48, 163, 0.8)",
-          "rgba(49, 46, 129, 0.8)",
-          "rgba(129, 140, 248, 0.8)",
-          "rgba(165, 180, 252, 0.8)",
-        ],
-        borderColor: [
-          "rgba(99, 102, 241, 1)",
-          "rgba(79, 70, 229, 1)",
-          "rgba(67, 56, 202, 1)",
-          "rgba(55, 48, 163, 1)",
-          "rgba(49, 46, 129, 1)",
-          "rgba(129, 140, 248, 1)",
-          "rgba(165, 180, 252, 1)",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
+  if (error) return <ErrorState message={error} onRetry={load} />;
 
-  // Mock data for market news
-  const marketNews = [
-    {
-      id: 1,
-      title:
-        "Federal Reserve Maintains Interest Rates, Signals Potential Cut Later This Year",
-      source: "Financial Times",
-      date: "2025-04-12",
-      snippet:
-        "The Federal Reserve kept its benchmark interest rate unchanged but indicated it could cut rates later this year if inflation continues to cool.",
-    },
-    {
-      id: 2,
-      title:
-        "Tech Giants Report Strong Quarterly Earnings, Exceeding Analyst Expectations",
-      source: "Wall Street Journal",
-      date: "2025-04-10",
-      snippet:
-        "Major technology companies reported better-than-expected earnings for Q1 2025, driven by AI and cloud computing growth.",
-    },
-    {
-      id: 3,
-      title:
-        "Cryptocurrency Market Faces Volatility as Regulatory Concerns Resurface",
-      source: "Bloomberg",
-      date: "2025-04-08",
-      snippet:
-        "Bitcoin and other cryptocurrencies experienced increased volatility following new regulatory proposals from several major economies.",
-    },
-    {
-      id: 4,
-      title:
-        "Global Supply Chain Improvements Lead to Reduced Inflation Pressures",
-      source: "Reuters",
-      date: "2025-04-05",
-      snippet:
-        "Recent improvements in global supply chains have helped ease inflation pressures, according to a new economic report.",
-    },
-    {
-      id: 5,
-      title:
-        "Renewable Energy Sector Sees Surge in Investment Following New Climate Policies",
-      source: "CNBC",
-      date: "2025-04-03",
-      snippet:
-        "Investments in renewable energy companies have increased significantly following the announcement of new climate policies by major economies.",
-    },
-  ];
+  const sentiment = summary?.market_sentiment;
+  const sentimentTotal = sentiment
+    ? sentiment.bullish + sentiment.neutral + sentiment.bearish
+    : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Market Analysis
-          </h1>
-          <div className="flex space-x-2">
-            <Button
-              variant={timeRange === "1w" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("1w")}
-            >
-              1W
-            </Button>
-            <Button
-              variant={timeRange === "1m" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("1m")}
-            >
-              1M
-            </Button>
-            <Button
-              variant={timeRange === "3m" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("3m")}
-            >
-              3M
-            </Button>
-            <Button
-              variant={timeRange === "1y" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("1y")}
-            >
-              1Y
-            </Button>
-            <Button
-              variant={timeRange === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeRange("all")}
-            >
-              All
-            </Button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {isLoading
+          ? [1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full" />)
+          : summary?.indices.map((index) => (
+              <Card key={index.name}>
+                <CardContent className="p-5">
+                  <p className="text-sm text-muted-foreground">{index.name}</p>
+                  <p className="mt-1 font-display text-xl font-semibold">
+                    {index.value.toLocaleString()}
+                  </p>
+                  <ChangeBadge value={index.change_percent} className="mt-2" />
+                </CardContent>
+              </Card>
+            ))}
+      </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8">
-          <button
-            className={`py-4 px-6 text-sm font-medium ${
-              activeTab === "overview"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("overview")}
-          >
-            Market Overview
-          </button>
-          <button
-            className={`py-4 px-6 text-sm font-medium ${
-              activeTab === "stocks"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("stocks")}
-          >
-            Stocks
-          </button>
-          <button
-            className={`py-4 px-6 text-sm font-medium ${
-              activeTab === "crypto"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("crypto")}
-          >
-            Cryptocurrencies
-          </button>
-          <button
-            className={`py-4 px-6 text-sm font-medium ${
-              activeTab === "news"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("news")}
-          >
-            Market News
-          </button>
-        </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="font-display">
+              Sector performance (1M)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-72 w-full" />
+            ) : sectors?.data.length ? (
+              <PerformanceBarChart data={sectors.data} height={320} />
+            ) : (
+              <EmptyState icon={TrendingUp} title="No sector data available" />
+            )}
+          </CardContent>
+        </Card>
 
-        {activeTab === "overview" && (
-          <>
-            {/* Market Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {marketStats.map((stat, index) => (
-                <StatCard
-                  key={index}
-                  title={stat.title}
-                  value={stat.value}
-                  change={stat.change}
-                />
-              ))}
-            </div>
-
-            {/* Market Performance Chart */}
-            <div className="mb-8">
-              <LineChart
-                data={marketPerformanceData}
-                title="Market Performance"
-                height={350}
-              />
-            </div>
-
-            {/* Sector Performance */}
-            <div className="mb-8">
-              <BarChart
-                data={sectorPerformanceData}
-                title="Sector Performance"
-                height={350}
-              />
-            </div>
-
-            {/* Trending Assets */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Trending Assets</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {trendingAssets.map((asset, index) => (
-                    <AssetCard
-                      key={index}
-                      symbol={asset.symbol}
-                      name={asset.name}
-                      price={asset.price}
-                      change24h={asset.change24h}
-                      marketCap={asset.marketCap}
-                      volume24h={asset.volume24h}
-                      onClick={() => {}}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {activeTab === "stocks" && (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Stock Market Analysis
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              This tab would contain detailed stock market data, sector
-              analysis, and individual stock information.
-            </p>
-          </div>
-        )}
-
-        {activeTab === "crypto" && (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Cryptocurrency Market
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              This tab would display cryptocurrency market data, token
-              information, and blockchain analytics.
-            </p>
-          </div>
-        )}
-
-        {activeTab === "news" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Latest Market News</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {marketNews.map((news) => (
-                  <div
-                    key={news.id}
-                    className="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-0 last:pb-0"
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      {news.title}
-                    </h3>
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-3">
-                      <span>{news.source}</span>
-                      <span className="mx-2">•</span>
-                      <span>{news.date}</span>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">Market sentiment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : sentiment ? (
+              <>
+                {(
+                  [
+                    ["Bullish", sentiment.bullish, "bg-success"],
+                    ["Neutral", sentiment.neutral, "bg-muted-foreground"],
+                    ["Bearish", sentiment.bearish, "bg-destructive"],
+                  ] as const
+                ).map(([label, value, color]) => (
+                  <div key={label}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium">
+                        {sentimentTotal
+                          ? Math.round((value / sentimentTotal) * 100)
+                          : 0}
+                        %
+                      </span>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      {news.snippet}
-                    </p>
-                    <Button variant="link" className="mt-2 p-0">
-                      Read more
-                    </Button>
+                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full ${color}`}
+                        style={{
+                          width: `${sentimentTotal ? (value / sentimentTotal) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
+              </>
+            ) : (
+              <EmptyState icon={TrendingUp} title="No sentiment data" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2">
+          <Newspaper className="h-4 w-4 text-primary" />
+          <CardTitle className="font-display">Market news</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : news?.data.length ? (
+            news.data.map((item) => (
+              <div
+                key={item.id}
+                className="border-b border-border/60 py-3.5 last:border-0"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.summary}
+                    </p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {item.source} · {item.time}
+                    </p>
+                  </div>
+                  <Badge className={sentimentStyle[item.sentiment]}>
+                    {item.sentiment}
+                  </Badge>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </main>
+            ))
+          ) : (
+            <EmptyState icon={Newspaper} title="No news available" />
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function AssetDetailSheet({
+  asset,
+  open,
+  onOpenChange,
+}: {
+  asset: Asset | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { get } = useApi();
+  const [history, setHistory] = useState<AssetPriceHistory | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!asset || !open) return;
+    setIsLoading(true);
+    get<AssetPriceHistory>(`/market/assets/${asset.id}/price_history`, {
+      period: "3m",
+    })
+      .then(setHistory)
+      .catch(() => setHistory(null))
+      .finally(() => setIsLoading(false));
+  }, [asset, open, get]);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="font-display">
+            {asset?.symbol} · {asset?.name}
+          </SheetTitle>
+        </SheetHeader>
+        {asset && (
+          <div className="mt-6 space-y-6">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Current price</p>
+                <p className="mt-1 font-display text-lg font-semibold">
+                  {asset.current_price != null
+                    ? formatCurrency(asset.current_price)
+                    : "—"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Type</p>
+                <p className="mt-1 font-display text-lg font-semibold capitalize">
+                  {asset.asset_type}
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Exchange</p>
+                <p className="mt-1 text-sm font-medium">
+                  {asset.exchange || "—"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-xs text-muted-foreground">Sector</p>
+                <p className="mt-1 text-sm font-medium">
+                  {asset.sector || "—"}
+                </p>
+              </div>
+            </div>
+
+            {asset.description && (
+              <p className="text-sm text-muted-foreground">
+                {asset.description}
+              </p>
+            )}
+
+            <div>
+              <p className="mb-2 text-sm font-medium">Price history (3M)</p>
+              {isLoading ? (
+                <Skeleton className="h-56 w-full" />
+              ) : history && history.data.length > 0 ? (
+                <TrendChart
+                  data={history.data.map((p) => ({
+                    label: formatDateWithTime(p.timestamp).split(",")[0],
+                    value: p.price,
+                  }))}
+                  height={220}
+                />
+              ) : (
+                <EmptyState
+                  icon={TrendingUp}
+                  title="No historical data"
+                  description="Price history hasn't been recorded for this asset yet."
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function AssetsTab() {
+  const { get } = useApi();
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  async function load(query?: string) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await get<Asset[]>("/market/assets/", {
+        limit: 100,
+        search: query || undefined,
+      });
+      setAssets(data);
+    } catch {
+      setError("We couldn't load the asset catalog.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => load(search), 350);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  return (
+    <div className="space-y-4">
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by symbol or name..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {error ? (
+            <div className="p-6">
+              <ErrorState message={error} onRetry={() => load(search)} />
+            </div>
+          ) : isLoading ? (
+            <div className="space-y-2 p-6">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : assets.length === 0 ? (
+            <div className="p-6">
+              <EmptyState
+                icon={Search}
+                title="No assets found"
+                description="Try a different search term."
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Sector</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assets.map((asset) => (
+                    <TableRow
+                      key={asset.id}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedAsset(asset);
+                        setSheetOpen(true);
+                      }}
+                    >
+                      <TableCell className="font-medium">
+                        {asset.symbol}
+                      </TableCell>
+                      <TableCell className="max-w-[220px] truncate text-muted-foreground">
+                        {asset.name}
+                      </TableCell>
+                      <TableCell className="capitalize text-muted-foreground">
+                        {asset.asset_type}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {asset.sector || "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {asset.current_price != null
+                          ? formatCurrency(asset.current_price)
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AssetDetailSheet
+        asset={selectedAsset}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
+    </div>
+  );
+}
+
+function MarketAnalysisContent() {
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Market analysis"
+        description="Live indices, sector momentum, and the full tradable asset catalog."
+      />
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="assets">Assets</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="mt-6">
+          <OverviewTab />
+        </TabsContent>
+        <TabsContent value="assets" className="mt-6">
+          <AssetsTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+export default function MarketAnalysisPage() {
+  return (
+    <AppShell>
+      <MarketAnalysisContent />
+    </AppShell>
   );
 }

@@ -147,6 +147,67 @@ def delete_user(
     db.commit()
 
 
+@router.post("/password-reset/request")
+def request_password_reset(email: str, db: Session = Depends(get_db)) -> Any:
+    """Request a password reset link.
+
+    Always returns a generic success message so the endpoint cannot be used to
+    enumerate registered email addresses. The reset token is a short-lived,
+    stateless JWT (no DB migration required). In production this token would
+    be emailed to the user by a mail service; outside of production it is
+    also returned in the response body for local development/testing.
+    """
+    user = db.query(User).filter(User.email == email).first()
+    reset_token: Optional[str] = None
+    if user:
+        reset_token = create_access_token(
+            data={"sub": user.email, "purpose": "password_reset"},
+            expires_delta=timedelta(minutes=15),
+        )
+
+    response: dict = {
+        "message": "If an account exists for this email, a password reset link has been sent.",
+    }
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    if reset_token and not is_production:
+        response["reset_token"] = reset_token
+    return response
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    token: str,
+    new_password: str,
+    db: Session = Depends(get_db),
+) -> Any:
+    """Confirm a password reset using the token issued by /password-reset/request."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="This reset link is invalid or has expired.",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception as exc:
+        raise credentials_exception from exc
+
+    if payload.get("purpose") != "password_reset" or not payload.get("sub"):
+        raise credentials_exception
+
+    user = db.query(User).filter(User.email == payload["sub"]).first()
+    if not user:
+        raise credentials_exception
+
+    if len(new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long.",
+        )
+
+    user.hashed_password = get_password_hash(new_password)
+    db.commit()
+    return {"message": "Your password has been updated. You can now sign in."}
+
+
 @router.post("/login", response_model=LoginResponse)
 def login(
     email: str,
@@ -166,8 +227,9 @@ def login(
             detail="Account is inactive",
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    role_value = user.role.value if hasattr(user.role, "value") else user.role
     access_token = create_access_token(
-        data={"sub": user.email, "id": user.id, "role": str(user.role)},
+        data={"sub": user.email, "id": user.id, "role": role_value},
         expires_delta=access_token_expires,
     )
     user.last_login = datetime.now(timezone.utc)
@@ -178,5 +240,5 @@ def login(
         "user_id": user.id,
         "username": user.username,
         "email": user.email,
-        "role": str(user.role),
+        "role": role_value,
     }

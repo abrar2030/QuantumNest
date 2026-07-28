@@ -10,33 +10,16 @@ import {
   useState,
 } from "react";
 
-// Extend Window interface for ethereum
+interface EthereumProvider {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on: (event: string, handler: (...args: unknown[]) => void) => void;
+  removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+}
+
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: EthereumProvider;
   }
-}
-
-// Interface for portfolio asset
-export interface PortfolioAsset {
-  id: string;
-  name: string;
-  symbol: string;
-  quantity: number;
-  value: number;
-  tokenAddress?: string;
-}
-
-// Interface for transaction data
-export interface TransactionData {
-  hash: string;
-  from: string;
-  to: string;
-  value: string;
-  timestamp: number;
-  status: "pending" | "confirmed" | "failed";
-  blockNumber?: number;
-  gasUsed?: string;
 }
 
 interface BlockchainContextType {
@@ -60,13 +43,10 @@ const BlockchainContext = createContext<BlockchainContextType | undefined>(
   undefined,
 );
 
-interface BlockchainProviderProps {
-  children: ReactNode;
-}
-
-export function BlockchainProvider({ children }: BlockchainProviderProps) {
-  const [provider, setProvider] =
-    useState<ethers.providers.Web3Provider | null>(null);
+export function BlockchainProvider({ children }: { children: ReactNode }) {
+  const [provider, setProvider] = useState<ethers.providers.Web3Provider | null>(
+    null,
+  );
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
@@ -74,67 +54,19 @@ export function BlockchainProvider({ children }: BlockchainProviderProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize provider on mount if already connected
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.ethereum) {
-      const checkConnection = async () => {
-        try {
-          const web3Provider = new ethers.providers.Web3Provider(
-            window.ethereum,
-          );
-          const accounts = await web3Provider.listAccounts();
+  const disconnectWallet = useCallback(() => {
+    setProvider(null);
+    setSigner(null);
+    setAccount(null);
+    setChainId(null);
+    setIsConnected(false);
+    setError(null);
+  }, []);
 
-          if (accounts.length > 0) {
-            setProvider(web3Provider);
-            const web3Signer = web3Provider.getSigner();
-            setSigner(web3Signer);
-            setAccount(accounts[0]);
-            const network = await web3Provider.getNetwork();
-            setChainId(network.chainId);
-            setIsConnected(true);
-          }
-        } catch (err) {
-          console.error("Error checking connection:", err);
-        }
-      };
-
-      checkConnection();
-
-      // Listen for account changes
-      window.ethereum.on("accountsChanged", (accounts: string[]) => {
-        if (accounts.length > 0) {
-          setAccount(accounts[0]);
-          if (provider) {
-            const newSigner = provider.getSigner();
-            setSigner(newSigner);
-          }
-        } else {
-          // User disconnected
-          setAccount(null);
-          setSigner(null);
-          setIsConnected(false);
-        }
-      });
-
-      // Listen for chain changes
-      window.ethereum.on("chainChanged", (_newChainId: string) => {
-        // Reload the page as recommended by MetaMask
-        window.location.reload();
-      });
-
-      return () => {
-        if (window.ethereum.removeListener) {
-          window.ethereum.removeListener("accountsChanged", () => {});
-          window.ethereum.removeListener("chainChanged", () => {});
-        }
-      };
-    }
-  }, [provider]);
-
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async () => {
     if (typeof window === "undefined" || !window.ethereum) {
       setError(
-        "MetaMask is not installed. Please install MetaMask to use this application.",
+        "No wallet extension detected. Install MetaMask (or a compatible wallet) to connect.",
       );
       return;
     }
@@ -143,7 +75,6 @@ export function BlockchainProvider({ children }: BlockchainProviderProps) {
     setError(null);
 
     try {
-      // Request account access
       await window.ethereum.request({ method: "eth_requestAccounts" });
 
       const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -159,50 +90,86 @@ export function BlockchainProvider({ children }: BlockchainProviderProps) {
       setChainId(network.chainId);
 
       setIsConnected(true);
-    } catch (err: any) {
-      console.error("Error connecting wallet:", err);
-      setError(err.message || "Failed to connect wallet");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to connect wallet";
+      setError(message);
       setIsConnected(false);
     } finally {
       setIsConnecting(false);
     }
-  };
-
-  const disconnectWallet = useCallback(() => {
-    setProvider(null);
-    setSigner(null);
-    setAccount(null);
-    setChainId(null);
-    setIsConnected(false);
-    setError(null);
   }, []);
 
-  const getBalance = async (): Promise<string> => {
+  // Reconnect silently if the wallet extension already has an authorized session.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+
+    let cancelled = false;
+
+    async function checkExistingConnection() {
+      try {
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum!);
+        const accounts = await web3Provider.listAccounts();
+        if (cancelled || accounts.length === 0) return;
+
+        setProvider(web3Provider);
+        const web3Signer = web3Provider.getSigner();
+        setSigner(web3Signer);
+        setAccount(accounts[0]);
+        const network = await web3Provider.getNetwork();
+        setChainId(network.chainId);
+        setIsConnected(true);
+      } catch {
+        // No existing session — this is expected on first visit.
+      }
+    }
+
+    checkExistingConnection();
+
+    function handleAccountsChanged(...args: unknown[]) {
+      const accounts = args[0] as string[];
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+      } else {
+        disconnectWallet();
+      }
+    }
+
+    function handleChainChanged() {
+      window.location.reload();
+    }
+
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
+
+    return () => {
+      cancelled = true;
+      window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum?.removeListener("chainChanged", handleChainChanged);
+    };
+  }, [disconnectWallet]);
+
+  const getBalance = useCallback(async (): Promise<string> => {
     if (!provider || !account) {
       throw new Error("Wallet not connected");
     }
-
     const balance = await provider.getBalance(account);
     return ethers.utils.formatEther(balance);
-  };
+  }, [provider, account]);
 
-  const sendTransaction = async (
-    to: string,
-    amount: string,
-  ): Promise<ethers.providers.TransactionResponse> => {
-    if (!signer) {
-      throw new Error("Wallet not connected");
-    }
+  const sendTransaction = useCallback(
+    async (to: string, amount: string) => {
+      if (!signer) {
+        throw new Error("Wallet not connected");
+      }
+      return signer.sendTransaction({
+        to,
+        value: ethers.utils.parseEther(amount),
+      });
+    },
+    [signer],
+  );
 
-    const tx = await signer.sendTransaction({
-      to,
-      value: ethers.utils.parseEther(amount),
-    });
-
-    return tx;
-  };
-
-  const value = {
+  const value: BlockchainContextType = {
     provider,
     signer,
     account,
@@ -217,18 +184,14 @@ export function BlockchainProvider({ children }: BlockchainProviderProps) {
   };
 
   return (
-    <BlockchainContext.Provider value={value}>
-      {children}
-    </BlockchainContext.Provider>
+    <BlockchainContext.Provider value={value}>{children}</BlockchainContext.Provider>
   );
 }
 
 export function useBlockchain() {
   const context = useContext(BlockchainContext);
-
   if (context === undefined) {
     throw new Error("useBlockchain must be used within a BlockchainProvider");
   }
-
   return context;
 }

@@ -18,8 +18,8 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Component directories
 WEB_FRONTEND_DIR="${PROJECT_DIR}/web-frontend"
 MOBILE_FRONTEND_DIR="${PROJECT_DIR}/mobile-frontend"
-BACKEND_DIR="${PROJECT_DIR}/backend"
-BLOCKCHAIN_DIR="${PROJECT_DIR}/blockchain"
+BACKEND_DIR="${PROJECT_DIR}/code/backend"
+BLOCKCHAIN_DIR="${PROJECT_DIR}/code/blockchain"
 
 # Log directory
 LOG_DIR="${PROJECT_DIR}/logs"
@@ -46,6 +46,12 @@ function show_help {
   echo "  ./log_aggregator.sh clean 14"
   echo "  ./log_aggregator.sh search \"database connection\""
   echo "  ./log_aggregator.sh analyze"
+  echo ""
+  echo "Note: this tool looks for a 'logs/' subdirectory in each component"
+  echo "(web-frontend/logs, mobile-frontend/logs, code/backend/logs,"
+  echo "code/blockchain/logs). None of the apps write there by default, so"
+  echo "redirect a component's output there if you want to use this tool, e.g.:"
+  echo "  cd code/backend && mkdir -p logs && python3 run_flask.py >> logs/app.log 2>&1"
 }
 
 # Function to collect logs from all components
@@ -59,8 +65,8 @@ function collect_logs {
 
   # Collect Web Frontend logs
   echo "Collecting Web Frontend logs..."
-  if [ -d "${WEB_FRONTEND_DIR}/.next/logs" ]; then
-    cp -r "${WEB_FRONTEND_DIR}/.next/logs" "${collection_dir}/web-frontend"
+  if [ -d "${WEB_FRONTEND_DIR}/logs" ]; then
+    cp -r "${WEB_FRONTEND_DIR}/logs" "${collection_dir}/web-frontend"
     echo -e "${GREEN}✓ Web Frontend logs collected${NC}"
   else
     echo -e "${YELLOW}! No Web Frontend logs found${NC}"
@@ -68,8 +74,8 @@ function collect_logs {
 
   # Collect Mobile Frontend logs
   echo "Collecting Mobile Frontend logs..."
-  if [ -d "${MOBILE_FRONTEND_DIR}/.expo/logs" ]; then
-    cp -r "${MOBILE_FRONTEND_DIR}/.expo/logs" "${collection_dir}/mobile-frontend"
+  if [ -d "${MOBILE_FRONTEND_DIR}/logs" ]; then
+    cp -r "${MOBILE_FRONTEND_DIR}/logs" "${collection_dir}/mobile-frontend"
     echo -e "${GREEN}✓ Mobile Frontend logs collected${NC}"
   else
     echo -e "${YELLOW}! No Mobile Frontend logs found${NC}"
@@ -151,15 +157,15 @@ function watch_logs {
   tmux split-window -v -t quantumnest_logs:0.1
 
   # Web Frontend logs
-  if [ -f "${WEB_FRONTEND_DIR}/.next/logs/nextjs.log" ]; then
-    tmux send-keys -t quantumnest_logs:0.0 "echo -e '${BLUE}Web Frontend Logs${NC}' && tail -f ${WEB_FRONTEND_DIR}/.next/logs/nextjs.log" C-m
+  if [ -f "${WEB_FRONTEND_DIR}/logs/app.log" ]; then
+    tmux send-keys -t quantumnest_logs:0.0 "echo -e '${BLUE}Web Frontend Logs${NC}' && tail -f ${WEB_FRONTEND_DIR}/logs/app.log" C-m
   else
     tmux send-keys -t quantumnest_logs:0.0 "echo -e '${YELLOW}Web Frontend Logs (not found)${NC}'" C-m
   fi
 
   # Mobile Frontend logs
-  if [ -f "${MOBILE_FRONTEND_DIR}/.expo/logs/metro.log" ]; then
-    tmux send-keys -t quantumnest_logs:0.1 "echo -e '${BLUE}Mobile Frontend Logs${NC}' && tail -f ${MOBILE_FRONTEND_DIR}/.expo/logs/metro.log" C-m
+  if [ -f "${MOBILE_FRONTEND_DIR}/logs/app.log" ]; then
+    tmux send-keys -t quantumnest_logs:0.1 "echo -e '${BLUE}Mobile Frontend Logs${NC}' && tail -f ${MOBILE_FRONTEND_DIR}/logs/app.log" C-m
   else
     tmux send-keys -t quantumnest_logs:0.1 "echo -e '${YELLOW}Mobile Frontend Logs (not found)${NC}'" C-m
   fi
@@ -198,10 +204,10 @@ function clean_logs {
   echo -e "${BLUE}Cleaning logs older than ${days} days...${NC}"
 
   # Find and remove old log collections
-  local old_collections=$(find "$LOG_DIR" -maxdepth 1 -type d -mtime +$days | grep -v "^$LOG_DIR$")
+  local old_collections=$(find "$LOG_DIR" -maxdepth 1 -type d -mtime "+$days" | grep -v "^$LOG_DIR$")
   local count=$(echo "$old_collections" | grep -v '^$' | wc -l)
 
-  if [ $count -eq 0 ]; then
+  if [ "$count" -eq 0 ]; then
     echo -e "${GREEN}No log collections older than ${days} days found.${NC}"
     return 0
   fi
@@ -210,7 +216,7 @@ function clean_logs {
   echo "The following directories will be removed:"
   echo "$old_collections"
 
-  read -p "Continue? (y/n): " confirm
+  read -r -p "Continue? (y/n): " confirm
   if [ "$confirm" != "y" ]; then
     echo "Operation cancelled."
     return 0
@@ -268,11 +274,11 @@ function search_logs {
       echo "----------------------------------------"
     } >> "${results_dir}/results.txt"
 
-    local matches=$(grep -r --include="*.log" "$term" "$collection" 2>/dev/null)
+    local matches=$(grep -r --include="*.log" -- "$term" "$collection" 2>/dev/null)
     local match_count=$(echo "$matches" | grep -v '^$' | wc -l)
     total_matches=$((total_matches + match_count))
 
-    if [ $match_count -eq 0 ]; then
+    if [ "$match_count" -eq 0 ]; then
       echo "  No matches found."
       echo "No matches found." >> "${results_dir}/results.txt"
     else
@@ -328,7 +334,7 @@ function analyze_logs {
     echo "Total errors found: ${error_count}"
     echo ""
 
-    if [ $error_count -gt 0 ]; then
+    if [ "$error_count" -gt 0 ]; then
       echo "### Most common errors:"
       grep -r -i "error" "$latest_collection" 2>/dev/null | sort | uniq -c | sort -nr | head -n 10
       echo ""
@@ -353,7 +359,7 @@ function analyze_logs {
     echo "Total warnings found: ${warning_count}"
     echo ""
 
-    if [ $warning_count -gt 0 ]; then
+    if [ "$warning_count" -gt 0 ]; then
       echo "### Most common warnings:"
       grep -r -i "warning" "$latest_collection" 2>/dev/null | sort | uniq -c | sort -nr | head -n 10
       echo ""
@@ -398,7 +404,7 @@ function analyze_logs {
 }
 
 # Main script execution
-case "$1" in
+case "${1:-help}" in
   collect)
     collect_logs
     ;;
@@ -406,10 +412,10 @@ case "$1" in
     watch_logs
     ;;
   clean)
-    clean_logs "$2"
+    clean_logs "${2:-}"
     ;;
   search)
-    search_logs "$2"
+    search_logs "${2:-}"
     ;;
   analyze)
     analyze_logs
@@ -418,7 +424,7 @@ case "$1" in
     show_help
     ;;
   *)
-    echo -e "${RED}Error: Unknown command '$1'${NC}"
+    echo -e "${RED}Error: Unknown command '${1}'${NC}"
     show_help
     exit 1
     ;;

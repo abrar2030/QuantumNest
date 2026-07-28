@@ -9,7 +9,10 @@ variable "enable_nat_gateway"    { default = true }
 variable "enable_dns_hostnames"  { default = true }
 variable "enable_dns_support"    { default = true }
 variable "flow_log_destination_arn" { default = "" }
-variable "tags"             { type = map(string); default = {} }
+variable "tags"             {
+  type = map(string)
+  default = {}
+}
 
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr

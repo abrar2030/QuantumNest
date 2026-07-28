@@ -9,8 +9,10 @@ resources:
   - app-configmap.yaml
   - backend-deployment.yaml
   - backend-service.yaml
-  - frontend-deployment.yaml
-  - frontend-service.yaml
+  - web-frontend-deployment.yaml
+  - web-frontend-service.yaml
+  - mobile-frontend-deployment.yaml
+  - mobile-frontend-service.yaml
   - database-statefulset.yaml
   - database-service.yaml
   - redis-deployment.yaml
@@ -20,7 +22,8 @@ resources:
 
 # Secrets must be managed externally via External Secrets Operator
 # See: security/secrets/external-secrets-operator/external-secrets.yaml
-# - app-secrets.yaml  # DO NOT include actual secrets in git
+# - app-secrets.yaml    # DO NOT include actual secrets in git
+# - redis-secrets.yaml  # DO NOT include actual secrets in git
 
 commonLabels:
   app.kubernetes.io/part-of: quantumnest-platform

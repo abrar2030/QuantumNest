@@ -15,7 +15,7 @@ x-backend-env: &backend-env
   REDIS_HOST: redis
   REDIS_PORT: "6379"
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
   ETHEREUM_RPC_URL: http://blockchain:8545
   HOST: 0.0.0.0
   PORT: "8000"

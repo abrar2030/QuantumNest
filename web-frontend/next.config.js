@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   // FIXED: Removed deprecated `swcMinify` option (enabled by default in Next.js 14,
   // setting it explicitly causes a build warning).
   webpack: (config) => {

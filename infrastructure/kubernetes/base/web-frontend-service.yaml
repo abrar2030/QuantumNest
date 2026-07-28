@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: quantumnest-web-frontend
+  namespace: quantumnest-prod
+  labels:
+    app: quantumnest-web-frontend
+    tier: frontend
+    app.kubernetes.io/name: quantumnest-web-frontend
+    app.kubernetes.io/component: web-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: quantumnest-web-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP

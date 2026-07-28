@@ -1,358 +1,238 @@
 "use client";
 
-import { useState } from "react";
-import PerformanceTab from "@/components/portfolio/PerformanceTab";
-import TransactionsTab from "@/components/portfolio/TransactionsTab";
-import { Button } from "@/components/ui/button";
-import { PortfolioCard } from "@/components/ui/Cards";
-import { DoughnutChart } from "@/components/ui/Charts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ArrowRight, Layers, Trash2, Wallet } from "lucide-react";
+import { toast } from "sonner";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/finance/page-header";
+import { EmptyState, ErrorState } from "@/components/finance/empty-state";
+import { ChangeBadge } from "@/components/finance/change-badge";
+import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
+import { ApiError, useApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import type { Portfolio, PortfolioSummary } from "@/lib/types";
 
-export default function Portfolio() {
-  const [activeTab, setActiveTab] = useState("portfolios");
+const riskLabels: Record<string, string> = {
+  very_low: "Very low risk",
+  low: "Low risk",
+  moderate: "Moderate risk",
+  high: "High risk",
+  very_high: "Very high risk",
+};
 
-  // Mock data for portfolios
-  const portfolios = [
-    {
-      id: 1,
-      name: "Growth Portfolio",
-      value: 750000,
-      change: 8.5,
-      assetCount: 8,
-      lastUpdated: "2025-04-12",
-    },
-    {
-      id: 2,
-      name: "Income Portfolio",
-      value: 350000,
-      change: 3.2,
-      assetCount: 5,
-      lastUpdated: "2025-04-12",
-    },
-    {
-      id: 3,
-      name: "Crypto Portfolio",
-      value: 150000,
-      change: -2.8,
-      assetCount: 6,
-      lastUpdated: "2025-04-12",
-    },
-  ];
+function PortfolioListContent() {
+  const { get, del } = useApi();
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [summaries, setSummaries] = useState<Record<number, PortfolioSummary>>(
+    {},
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Mock data for assets in selected portfolio (assuming Growth Portfolio)
-  const portfolioAssets = [
-    {
-      id: 1,
-      symbol: "AAPL",
-      name: "Apple Inc.",
-      quantity: 100,
-      purchasePrice: 150.25,
-      currentPrice: 180.5,
-      value: 18050,
-      change: 20.13,
-    },
-    {
-      id: 2,
-      symbol: "MSFT",
-      name: "Microsoft Corporation",
-      quantity: 75,
-      purchasePrice: 280.75,
-      currentPrice: 410.25,
-      value: 30768.75,
-      change: 46.13,
-    },
-    {
-      id: 3,
-      symbol: "GOOGL",
-      name: "Alphabet Inc.",
-      quantity: 25,
-      purchasePrice: 2100.5,
-      currentPrice: 2450.75,
-      value: 61268.75,
-      change: 16.67,
-    },
-    {
-      id: 4,
-      symbol: "AMZN",
-      name: "Amazon.com Inc.",
-      quantity: 30,
-      purchasePrice: 3200.0,
-      currentPrice: 3550.25,
-      value: 106507.5,
-      change: 10.95,
-    },
-    {
-      id: 5,
-      symbol: "TSLA",
-      name: "Tesla, Inc.",
-      quantity: 50,
-      purchasePrice: 220.5,
-      currentPrice: 210.75,
-      value: 10537.5,
-      change: -4.42,
-    },
-    {
-      id: 6,
-      symbol: "BTC",
-      name: "Bitcoin",
-      quantity: 2.5,
-      purchasePrice: 50000.0,
-      currentPrice: 65000.0,
-      value: 162500,
-      change: 30.0,
-    },
-    {
-      id: 7,
-      symbol: "ETH",
-      name: "Ethereum",
-      quantity: 15,
-      purchasePrice: 2800.0,
-      currentPrice: 3200.0,
-      value: 48000,
-      change: 14.29,
-    },
-    {
-      id: 8,
-      symbol: "VTI",
-      name: "Vanguard Total Stock Market ETF",
-      quantity: 200,
-      purchasePrice: 210.25,
-      currentPrice: 230.5,
-      value: 46100,
-      change: 9.63,
-    },
-  ];
+  async function load() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const list = await get<Portfolio[]>("/portfolio/", { limit: 100 });
+      setPortfolios(list);
+      const entries = await Promise.all(
+        list.map(async (p) => {
+          try {
+            const summary = await get<PortfolioSummary>(
+              `/portfolio/summary/${p.id}`,
+            );
+            return [p.id, summary] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setSummaries(
+        Object.fromEntries(
+          entries.filter((e): e is [number, PortfolioSummary] => e !== null),
+        ),
+      );
+    } catch {
+      setError("We couldn't load your portfolios right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
-  // Mock data for allocation chart
-  const allocationData = {
-    labels: [
-      "Technology",
-      "Finance",
-      "Healthcare",
-      "Consumer",
-      "Energy",
-      "Crypto",
-      "ETFs",
-    ],
-    datasets: [
-      {
-        data: [35, 15, 10, 12, 8, 15, 5],
-        backgroundColor: [
-          "rgba(99, 102, 241, 0.8)",
-          "rgba(79, 70, 229, 0.8)",
-          "rgba(67, 56, 202, 0.8)",
-          "rgba(55, 48, 163, 0.8)",
-          "rgba(49, 46, 129, 0.8)",
-          "rgba(129, 140, 248, 0.8)",
-          "rgba(165, 180, 252, 0.8)",
-        ],
-        borderColor: [
-          "rgba(99, 102, 241, 1)",
-          "rgba(79, 70, 229, 1)",
-          "rgba(67, 56, 202, 1)",
-          "rgba(55, 48, 163, 1)",
-          "rgba(49, 46, 129, 1)",
-          "rgba(129, 140, 248, 1)",
-          "rgba(165, 180, 252, 1)",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleDelete(id: number) {
+    setDeletingId(id);
+    try {
+      await del(`/portfolio/${id}`);
+      toast.success("Portfolio deleted.");
+      setPortfolios((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Could not delete portfolio.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-          Portfolio Management
-        </h1>
-        <Button size="sm">Create New Portfolio</Button>
-      </div>
+      <PageHeader
+        title="Portfolios"
+        description="Create and manage portfolios across every asset class you hold."
+        actions={
+          <CreatePortfolioDialog
+            onCreated={(p) => setPortfolios((prev) => [p, ...prev])}
+          />
+        }
+      />
 
-      {/* Tabs - Scrollable on mobile */}
-      <div className="overflow-x-auto pb-2">
-        <div className="flex border-b border-gray-200 dark:border-gray-700 min-w-max">
-          <button
-            className={`py-3 px-4 sm:py-4 sm:px-6 text-sm font-medium ${
-              activeTab === "portfolios"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("portfolios")}
-          >
-            My Portfolios
-          </button>
-          <button
-            className={`py-3 px-4 sm:py-4 sm:px-6 text-sm font-medium ${
-              activeTab === "performance"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("performance")}
-          >
-            Performance
-          </button>
-          <button
-            className={`py-3 px-4 sm:py-4 sm:px-6 text-sm font-medium ${
-              activeTab === "transactions"
-                ? "text-indigo-600 border-b-2 border-indigo-600 dark:text-indigo-400 dark:border-indigo-400"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-            onClick={() => setActiveTab("transactions")}
-          >
-            Transactions
-          </button>
+      {error ? (
+        <ErrorState message={error} onRetry={load} />
+      ) : isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-48 w-full" />
+          ))}
         </div>
-      </div>
-
-      {activeTab === "portfolios" && (
-        <div className="space-y-6">
-          {/* Portfolios Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {portfolios.map((portfolio) => (
-              <PortfolioCard
-                key={portfolio.id}
-                name={portfolio.name}
-                value={portfolio.value}
-                change={portfolio.change}
-                assetCount={portfolio.assetCount}
-                lastUpdated={portfolio.lastUpdated}
-                onClick={() => {
-                  /* Add logic to select portfolio */
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Selected Portfolio Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Growth Portfolio Assets</CardTitle>
+      ) : portfolios.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="No portfolios yet"
+          description="Create your first portfolio to start tracking holdings, performance, and AI recommendations."
+          action={
+            <CreatePortfolioDialog
+              onCreated={(p) => setPortfolios((prev) => [p, ...prev])}
+            />
+          }
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {portfolios.map((portfolio) => {
+            const summary = summaries[portfolio.id];
+            const returnPct =
+              summary && summary.total_cost > 0
+                ? ((summary.total_value - summary.total_cost) /
+                    summary.total_cost) *
+                  100
+                : 0;
+            return (
+              <Card key={portfolio.id} className="card-hover flex flex-col">
+                <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <Link
+                      href={`/portfolio/${portfolio.id}`}
+                      className="font-display text-base font-semibold hover:text-primary"
+                    >
+                      {portfolio.name}
+                    </Link>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {portfolio.description || "No description provided."}
+                    </p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Delete this portfolio?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently remove &quot;{portfolio.name}
+                          &quot; and its holdings. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          disabled={deletingId === portfolio.id}
+                          onClick={() => handleDelete(portfolio.id)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </CardHeader>
-                <CardContent className="p-0 sm:p-6">
-                  {" "}
-                  {/* Remove padding on smallest screens for table */}
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Asset</TableHead>
-                        <TableHead className="hidden sm:table-cell">
-                          Qty
-                        </TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          Purchase
-                        </TableHead>
-                        <TableHead className="hidden lg:table-cell">
-                          Current
-                        </TableHead>
-                        <TableHead>Value</TableHead>
-                        <TableHead>Change</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {portfolioAssets.map((asset) => (
-                        <TableRow key={asset.id}>
-                          <TableCell className="font-medium">
-                            <div className="font-semibold">{asset.symbol}</div>
-                            <div className="text-xs text-gray-500 hidden sm:block">
-                              {asset.name}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            {asset.quantity}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {formatCurrency(asset.purchasePrice)}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {formatCurrency(asset.currentPrice)}
-                          </TableCell>
-                          <TableCell>{formatCurrency(asset.value)}</TableCell>
-                          <TableCell
-                            className={
-                              asset.change >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }
-                          >
-                            {asset.change >= 0 ? "+" : ""}
-                            {asset.change.toFixed(2)}%
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <CardContent className="flex flex-1 flex-col justify-between gap-4">
+                  <div>
+                    <Badge variant="secondary">
+                      {riskLabels[portfolio.risk_level] || portfolio.risk_level}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="font-display text-2xl font-semibold">
+                      {summary ? formatCurrency(summary.total_value) : "—"}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      {summary && <ChangeBadge value={returnPct} />}
+                      <span className="text-xs text-muted-foreground">
+                        {summary?.total_assets ?? 0} holdings
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="justify-between"
+                    asChild
+                  >
+                    <Link href={`/portfolio/${portfolio.id}`}>
+                      View details <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
-            </div>
-            <div>
-              <DoughnutChart
-                data={allocationData}
-                title="Asset Allocation"
-                height={300} // Adjusted height
-              />
-            </div>
-          </div>
-
-          {/* Portfolio Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Add Assets
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Add new assets to your portfolio.
-                </p>
-                <Button variant="default" size="sm" className="w-full">
-                  Add Assets
-                </Button>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Rebalance
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Optimize allocation based on AI.
-                </p>
-                <Button variant="outline" size="sm" className="w-full">
-                  Rebalance
-                </Button>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Export Data
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Download portfolio data.
-                </p>
-                <Button variant="subtle" size="sm" className="w-full">
-                  Export
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {activeTab === "performance" && <PerformanceTab />}
-
-      {activeTab === "transactions" && <TransactionsTab />}
+      {!isLoading && portfolios.length > 0 && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Layers className="h-3.5 w-3.5" />
+          {portfolios.length} portfolio{portfolios.length === 1 ? "" : "s"}{" "}
+          total
+        </p>
+      )}
     </div>
+  );
+}
+
+export default function PortfolioPage() {
+  return (
+    <AppShell>
+      <PortfolioListContent />
+    </AppShell>
   );
 }

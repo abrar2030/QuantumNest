@@ -7,13 +7,28 @@ variable "subnet_ids"       { type = list(string) }
 variable "security_group_ids" { type = list(string) }
 variable "instance_type"    { default = "t3.micro" }
 variable "key_name"         { default = null }
-variable "private_subnet_ids" { type = list(string); default = [] }
+variable "private_subnet_ids" {
+  type = list(string)
+  default = []
+}
 variable "kms_key_arn"      { default = "" }
 variable "cluster_endpoint_public_access"       { default = true }
-variable "cluster_endpoint_public_access_cidrs" { type = list(string); default = ["0.0.0.0/0"] }
-variable "cluster_enabled_log_types" { type = list(string); default = [] }
-variable "node_groups" { type = any; default = {} }
-variable "tags"             { type = map(string); default = {} }
+variable "cluster_endpoint_public_access_cidrs" {
+  type = list(string)
+  default = ["0.0.0.0/0"]
+}
+variable "cluster_enabled_log_types" {
+  type = list(string)
+  default = []
+}
+variable "node_groups" {
+  type = any
+  default = {}
+}
+variable "tags"             {
+  type = map(string)
+  default = {}
+}
 
 data "aws_ami" "amazon_linux" {
   most_recent = true

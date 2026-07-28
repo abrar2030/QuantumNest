@@ -16,9 +16,9 @@ PASS=0
 FAIL=0
 WARN=0
 
-pass() { echo -e "${GREEN}[PASS]${NC} $*"; ((PASS++)); }
-fail() { echo -e "${RED}[FAIL]${NC} $*"; ((FAIL++)); }
-warn() { echo -e "${YELLOW}[WARN]${NC} $*"; ((WARN++)); }
+pass() { echo -e "${GREEN}[PASS]${NC} $*"; PASS=$((PASS + 1)); }
+fail() { echo -e "${RED}[FAIL]${NC} $*"; FAIL=$((FAIL + 1)); }
+warn() { echo -e "${YELLOW}[WARN]${NC} $*"; WARN=$((WARN + 1)); }
 info() { echo -e "${BLUE}[INFO]${NC} $*"; }
 
 echo ""
@@ -44,7 +44,8 @@ required_files=(
   "terraform/modules/security/main.tf"
   "kubernetes/base/namespace.yaml"
   "kubernetes/base/backend-deployment.yaml"
-  "kubernetes/base/frontend-deployment.yaml"
+  "kubernetes/base/web-frontend-deployment.yaml"
+  "kubernetes/base/mobile-frontend-deployment.yaml"
   "kubernetes/base/database-statefulset.yaml"
   "kubernetes/base/redis-deployment.yaml"
   "kubernetes/base/ingress.yaml"

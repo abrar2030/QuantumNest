@@ -1,0 +1,37 @@
+# {{ ansible_managed }}
+# PostgreSQL configuration for QuantumNest
+# Generated from postgresql.conf.j2 - do not edit directly on the host.
+
+# ── Connections ────────────────────────────────────────────────────────────
+listen_addresses = '*'
+port = 5432
+max_connections = {{ db_max_connections | default(150) }}
+
+# ── Memory ────────────────────────────────────────────────────────────────
+shared_buffers = '{{ db_shared_buffers | default("256MB") }}'
+effective_cache_size = '{{ db_effective_cache_size | default("768MB") }}'
+maintenance_work_mem = '{{ db_maintenance_work_mem | default("64MB") }}'
+wal_buffers = '{{ db_wal_buffers | default("16MB") }}'
+
+# ── Write-ahead log ──────────────────────────────────────────────────────
+wal_level = replica
+max_wal_size = '1GB'
+min_wal_size = '80MB'
+
+# ── Logging ──────────────────────────────────────────────────────────────
+logging_collector = on
+log_directory = 'log'
+log_filename = 'postgresql-%Y-%m-%d.log'
+log_min_duration_statement = 1000
+log_connections = on
+log_disconnections = on
+log_line_prefix = '%m [%p] %q%u@%d '
+
+# ── Locale ───────────────────────────────────────────────────────────────
+datestyle = 'iso, mdy'
+timezone = 'UTC'
+lc_messages = 'en_US.UTF-8'
+lc_monetary = 'en_US.UTF-8'
+lc_numeric = 'en_US.UTF-8'
+lc_time = 'en_US.UTF-8'
+default_text_search_config = 'pg_catalog.english'

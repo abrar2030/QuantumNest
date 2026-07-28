@@ -102,6 +102,10 @@ def get_all_users(
     if is_active is not None:
         query = query.filter(models.User.is_active == is_active)
     users = query.offset(skip).limit(limit).all()
+
+    def _enum_value(v: Any) -> Any:
+        return v.value if hasattr(v, "value") else v
+
     return {
         "total": query.count(),
         "data": [
@@ -109,8 +113,8 @@ def get_all_users(
                 "id": u.id,
                 "email": u.email,
                 "username": u.username,
-                "role": str(u.role),
-                "tier": str(u.tier),
+                "role": _enum_value(u.role),
+                "tier": _enum_value(u.tier),
                 "is_active": u.is_active,
                 "created_at": u.created_at.isoformat() if u.created_at else None,
                 "last_login": u.last_login.isoformat() if u.last_login else None,

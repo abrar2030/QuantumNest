@@ -1,10 +1,23 @@
 ---
 # roles/database/vars/main.yml
-db_name: "{{ db_name }}"
-db_user: "{{ db_user }}"
-db_password: "{{ db_password }}"
-db_root_password: "{{ db_root_password }}"
+#
+# db_password and db_root_password come from Ansible Vault (see
+# group_vars/all/vault.example.yml) - they must never be hardcoded here.
+# db_name/db_user aren't secret, so they get plain defaults directly.
+db_name: "quantumnest"
+db_user: "quantumnest_admin"
+db_password: "{{ vault_db_password }}"
+db_root_password: "{{ vault_db_root_password }}"
+
+# PostgreSQL tuning (this role installs/configures PostgreSQL - see
+# tasks/main.yml - not MySQL/MariaDB)
 db_max_connections: 150
-db_max_allowed_packet: "64M"
-db_innodb_buffer_pool_size: "256M"
-db_innodb_log_file_size: "64M"
+db_shared_buffers: "256MB"
+db_effective_cache_size: "768MB"
+db_maintenance_work_mem: "64MB"
+db_wal_buffers: "16MB"
+
+# Hosts/networks allowed to connect (used by pg_hba.conf.j2)
+db_allowed_hosts:
+  - "127.0.0.1/32"
+  - "10.0.0.0/8"

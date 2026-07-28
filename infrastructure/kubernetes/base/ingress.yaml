@@ -29,6 +29,7 @@ spec:
   tls:
     - hosts:
         - app.quantumnest.com
+        - m.quantumnest.com
       secretName: quantumnest-tls
   rules:
     - host: app.quantumnest.com
@@ -45,6 +46,23 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: quantumnest-frontend
+                name: quantumnest-web-frontend
+                port:
+                  number: 80
+    - host: m.quantumnest.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: quantumnest-backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: quantumnest-mobile-frontend
                 port:
                   number: 80

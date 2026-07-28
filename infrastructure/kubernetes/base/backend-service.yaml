@@ -10,9 +10,9 @@ metadata:
     app.kubernetes.io/component: backend
     app.kubernetes.io/part-of: quantumnest-platform
   annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "9090"
-    prometheus.io/path: "/metrics"
+    # prometheus-client is a declared dependency but no /metrics route is
+    # implemented yet, so scraping is disabled until that's added.
+    prometheus.io/scrape: "false"
 spec:
   type: ClusterIP
   selector:
@@ -21,18 +21,6 @@ spec:
   ports:
     - name: http
       port: 80
-      targetPort: 8080
-      protocol: TCP
-    - name: https
-      port: 443
-      targetPort: 8443
-      protocol: TCP
-    - name: metrics
-      port: 9090
-      targetPort: 9090
-      protocol: TCP
-    - name: health
-      port: 8081
-      targetPort: 8081
+      targetPort: 8000
       protocol: TCP
   sessionAffinity: None

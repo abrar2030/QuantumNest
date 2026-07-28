@@ -6,7 +6,7 @@
   become: true
   gather_facts: true
   vars:
-    environment: "{{ env | default('dev') }}"
+    deploy_environment: "{{ env | default('dev') }}"
   roles:
     - role: common
       tags:

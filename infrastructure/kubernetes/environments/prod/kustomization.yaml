@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: quantumnest-prod
+
+resources:
+  - ../../base
+
+replicas:
+  - name: quantumnest-backend
+    count: 3
+  - name: quantumnest-web-frontend
+    count: 2
+  - name: quantumnest-mobile-frontend
+    count: 2
+
+images:
+  - name: quantumnest/backend
+    newTag: "1.0.0"
+  - name: quantumnest/web-frontend
+    newTag: "1.0.0"
+  - name: quantumnest/mobile-frontend
+    newTag: "1.0.0"
+
+commonLabels:
+  environment: prod

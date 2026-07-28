@@ -68,15 +68,18 @@ The QuantumNest infrastructure represents a comprehensive, enterprise-grade fina
 
 ## Directory Structure
 
-| Directory          | Purpose                           | Key Components                                     |
-| ------------------ | --------------------------------- | -------------------------------------------------- |
-| `ansible/`         | Configuration management          | Playbooks, roles, inventory management             |
-| `backup-recovery/` | Data protection and DR            | Database backup, disaster recovery procedures      |
-| `ci-cd/`           | Continuous integration/deployment | Pipeline configurations, automation scripts        |
-| `kubernetes/`      | Container orchestration           | Manifests, configurations, deployments             |
-| `monitoring/`      | Observability and alerting        | Metrics, logging, tracing infrastructure           |
-| `security/`        | Security controls                 | IAM policies, network security, secrets management |
-| `terraform/`       | Infrastructure as Code            | Cloud resource provisioning, state management      |
+| Directory          | Purpose                    | Key Components                                     |
+| ------------------ | -------------------------- | -------------------------------------------------- |
+| `ansible/`         | Configuration management   | Playbooks, roles, inventory management             |
+| `backup-recovery/` | Data protection and DR     | Database backup, disaster recovery procedures      |
+| `kubernetes/`      | Container orchestration    | Manifests, configurations, deployments             |
+| `monitoring/`      | Observability and alerting | Metrics, logging, tracing infrastructure           |
+| `security/`        | Security controls          | IAM policies, network security, secrets management |
+| `terraform/`       | Infrastructure as Code     | Cloud resource provisioning, state management      |
+
+CI/CD (`.github/workflows/cicd.yml`) lives outside `infrastructure/` since it's
+a GitHub Actions workflow, not an infrastructure-as-code artifact - see
+[CI/CD Pipeline](#6-cicd-pipeline-githubworkflowscicdyml) below.
 
 ### File Inventory
 
@@ -131,23 +134,25 @@ Kubernetes manifests and configurations for container orchestration and applicat
 
 #### Base Manifests (`base/`)
 
-| Manifest                    | Purpose                         | Component                |
-| --------------------------- | ------------------------------- | ------------------------ |
-| `namespace.yaml`            | Namespace definition            | Core infrastructure      |
-| `app-configmap.yaml`        | Application configuration       | Configuration management |
-| `app-secrets.yaml`          | Sensitive data storage          | Secrets management       |
-| `backend-deployment.yaml`   | Backend service deployment      | Application layer        |
-| `backend-service.yaml`      | Backend service exposure        | Service mesh             |
-| `frontend-deployment.yaml`  | Frontend application deployment | Application layer        |
-| `frontend-service.yaml`     | Frontend service exposure       | Service mesh             |
-| `database-statefulset.yaml` | Database deployment             | Data layer               |
-| `database-service.yaml`     | Database service exposure       | Data layer               |
-| `redis-deployment.yaml`     | Cache deployment                | Caching layer            |
-| `redis-service.yaml`        | Cache service exposure          | Caching layer            |
-| `redis-pvc.yaml`            | Persistent volume claim         | Storage                  |
-| `ingress.yaml`              | Ingress configuration           | Traffic management       |
-| `rbac.yaml`                 | Role-based access control       | Security                 |
-| `kustomization.yaml`        | Kustomize configuration         | Deployment management    |
+| Manifest                          | Purpose                    | Component                |
+| --------------------------------- | -------------------------- | ------------------------ |
+| `namespace.yaml`                  | Namespace definition       | Core infrastructure      |
+| `app-configmap.yaml`              | Application configuration  | Configuration management |
+| `app-secrets.yaml`                | Sensitive data storage     | Secrets management       |
+| `backend-deployment.yaml`         | Backend service deployment | Application layer        |
+| `backend-service.yaml`            | Backend service exposure   | Service mesh             |
+| `web-frontend-deployment.yaml`    | Web frontend deployment    | Application layer        |
+| `web-frontend-service.yaml`       | Web frontend exposure      | Service mesh             |
+| `mobile-frontend-deployment.yaml` | Mobile frontend deployment | Application layer        |
+| `mobile-frontend-service.yaml`    | Mobile frontend exposure   | Service mesh             |
+| `database-statefulset.yaml`       | Database deployment        | Data layer               |
+| `database-service.yaml`           | Database service exposure  | Data layer               |
+| `redis-deployment.yaml`           | Cache deployment           | Caching layer            |
+| `redis-service.yaml`              | Cache service exposure     | Caching layer            |
+| `redis-pvc.yaml`                  | Persistent volume claim    | Storage                  |
+| `ingress.yaml`                    | Ingress configuration      | Traffic management       |
+| `rbac.yaml`                       | Role-based access control  | Security                 |
+| `kustomization.yaml`              | Kustomize configuration    | Deployment management    |
 
 #### Environment Configurations (`environments/`)
 
@@ -234,26 +239,21 @@ Data protection and disaster recovery solutions for business continuity.
 
 ---
 
-### 6. CI/CD Pipeline (`ci-cd/`)
+### 6. CI/CD Pipeline (`.github/workflows/cicd.yml`)
 
-Continuous integration and deployment automation for infrastructure and applications.
+Continuous integration and deployment automation for the application. This
+lives under `.github/workflows/`, not `infrastructure/`, since it's a GitHub
+Actions workflow rather than an infrastructure-as-code artifact.
 
 #### Pipeline Stages
 
-| Stage          | Tools             | Purpose                           |
-| -------------- | ----------------- | --------------------------------- |
-| Source Control | Git               | Version control and collaboration |
-| Build          | Docker, Maven     | Application packaging             |
-| Test           | SonarQube, JUnit  | Code quality and unit testing     |
-| Security Scan  | Trivy, Snyk       | Vulnerability scanning            |
-| Deploy         | ArgoCD, Terraform | Automated deployment              |
-| Verify         | Selenium, Postman | Smoke and integration testing     |
-
-#### Configuration
-
-| File        | Description               |
-| ----------- | ------------------------- |
-| `ci-cd.yml` | CI/CD pipeline definition |
+| Stage         | Tools                        | Purpose                                     |
+| ------------- | ---------------------------- | ------------------------------------------- |
+| Backend tests | pytest, flake8, black, isort | Backend unit tests and Python linting       |
+| Frontend      | npm, jest, eslint, prettier  | Frontend tests, linting, and build          |
+| Security scan | Trivy                        | Container/dependency vulnerability scanning |
+| Build         | Docker                       | Image builds for backend and both frontends |
+| Deploy        | kubectl, Kustomize           | Deployment via `infrastructure/kubernetes`  |
 
 ---
 

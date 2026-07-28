@@ -22,15 +22,13 @@ spec:
               name: quantumnest-prod
         - podSelector:
             matchLabels:
-              app: quantumnest-frontend
+              tier: frontend
         - podSelector:
             matchLabels:
               app: quantumnest-api-gateway
       ports:
         - protocol: TCP
-          port: 8080
-        - protocol: TCP
-          port: 8443 # HTTPS
+          port: 8000
   egress:
     - to:
         - namespaceSelector:
@@ -42,8 +40,6 @@ spec:
       ports:
         - protocol: TCP
           port: 5432 # PostgreSQL
-        - protocol: TCP
-          port: 3306 # MySQL
     - to:
         - namespaceSelector:
             matchLabels:
@@ -131,10 +127,13 @@ metadata:
     app.kubernetes.io/name: quantumnest-frontend
     app.kubernetes.io/component: network-policy
     security.quantumnest.com/policy-type: micro-segmentation
+    # NOTE: this policy applies to both quantumnest-web-frontend and
+    # quantumnest-mobile-frontend pods via the shared "tier: frontend" label.
 spec:
+  # Matches both quantumnest-web-frontend and quantumnest-mobile-frontend
+  # pods, which both carry this shared label.
   podSelector:
     matchLabels:
-      app: quantumnest-frontend
       tier: frontend
   policyTypes:
     - Ingress
@@ -166,9 +165,7 @@ spec:
               app: quantumnest-backend
       ports:
         - protocol: TCP
-          port: 8080
-        - protocol: TCP
-          port: 8443
+          port: 8000
     - to: [] # Allow DNS and external APIs
       ports:
         - protocol: UDP
@@ -221,8 +218,10 @@ spec:
             matchLabels:
               name: quantumnest-prod
       ports:
+        # Reserved for backend /metrics once implemented (see
+        # kubernetes/base/backend-deployment.yaml, currently disabled).
         - protocol: TCP
-          port: 8080 # Application metrics
+          port: 8000
         - protocol: TCP
           port: 9187 # Database metrics
         - protocol: TCP

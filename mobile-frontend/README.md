@@ -1,287 +1,95 @@
 # QuantumNest Mobile Frontend
 
-A Next.js-based Progressive Web App (PWA) for the QuantumNest investment platform.
+The mobile-optimized Progressive Web App (PWA) for QuantumNest Capital — an AI-driven
+investment platform with tokenized-asset support. Built with Next.js 15 (App Router)
+and sharing the same design system and backend integration as `web-frontend`, with a
+mobile-first layout (bottom tab navigation, single-column pages).
 
-## Overview
+## Tech stack
 
-This is the mobile-optimized web frontend for QuantumNest, built with:
+- **Next.js 15** (App Router) + **React 19** + **TypeScript**
+- **TailwindCSS** with a shared design-token system (`src/app/globals.css`)
+- **Radix UI / shadcn-style components** (`src/components/ui`)
+- **recharts** for charts, **ethers.js** for wallet connectivity
+- **react-hook-form + zod** for form validation
+- **sonner** for toasts, **next-themes** for dark/light mode
 
-- **Next.js 15** with App Router
-- **TypeScript** for type safety
-- **TailwindCSS** for styling
-- **Radix UI** components
-- **Chart.js** for data visualization
-- **ethers.js** for blockchain integration
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 14+ or pnpm
-- Backend API running (see backend setup below)
-
-### Installation
+## Getting started
 
 ```bash
-# Install dependencies
-npm install --legacy-peer-deps
-# or
-pnpm install
-
-# Copy environment variables
-cp .env.example .env.local
-
-# Update .env.local with your configuration
+npm install
+cp .env.example .env.local   # then set NEXT_PUBLIC_API_URL
+npm run dev                  # http://localhost:3000
 ```
 
-### Environment Variables
-
-Create a `.env.local` file based on `.env.example`:
+The app requires the FastAPI backend in `../code/backend` to be running (see that
+project's README). Set `NEXT_PUBLIC_API_URL` to point at it, e.g.:
 
 ```env
-# API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Blockchain Configuration
-NEXT_PUBLIC_BLOCKCHAIN_NETWORK=goerli
-NEXT_PUBLIC_INFURA_PROJECT_ID=your_infura_project_id
-
-# Feature Flags
-NEXT_PUBLIC_ENABLE_BLOCKCHAIN=false
-NEXT_PUBLIC_ENABLE_AI_RECOMMENDATIONS=true
 ```
 
-### Development
+### Build & test
 
 ```bash
-# Run development server
-npm run dev
-# or
-pnpm dev
-
-# Open http://localhost:3000 in your browser
+npm run build   # production build
+npm start       # serve the production build
+npm test        # jest unit tests
 ```
 
-### Building
+## App structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                 # Public marketing homepage (app entry point)
+│   ├── auth/                    # login, register, forgot-password, reset-password
+│   ├── dashboard/                # Post-login overview
+│   ├── portfolio/                # Portfolio list + /[id] detail
+│   ├── market-analysis/          # Market overview + asset browser
+│   ├── recommendations/          # AI market outlook, portfolio insights, sentiment, risk
+│   ├── blockchain-explorer/      # Wallet, contracts, transactions, tokenized assets
+│   ├── admin/                    # Admin console (role-gated)
+│   ├── profile/ settings/        # Account management
+│   └── privacy/ terms/           # Static legal pages
+├── components/
+│   ├── layout/                   # AppShell (bottom nav), PublicShell, AuthShell, etc.
+│   ├── finance/                  # StatCard, charts, empty/error states
+│   ├── portfolio/                # Create-portfolio & add-asset dialogs
+│   ├── auth/                     # ProtectedRoute / GuestRoute guards
+│   └── ui/                       # shadcn-style primitives
+├── lib/
+│   ├── api.tsx                   # Typed fetch client (auth header, error handling)
+│   ├── auth-context.tsx          # Login/register/logout backed by /token + /users
+│   ├── types.ts                  # TypeScript types mirroring backend Pydantic schemas
+│   └── blockchain.tsx            # MetaMask/EIP-1193 wallet context
+└── hooks/use-asset-catalog.ts    # Shared asset lookup used across pages
+```
+
+## Navigation flow
+
+The app always starts at the public **homepage** (`/`). From there, users sign up or
+sign in (`/auth/register`, `/auth/login`), which redirects to `/dashboard`. Authenticated
+pages are wrapped in `<AppShell>`, which enforces auth via `<ProtectedRoute>` and renders
+the bottom tab bar (Dashboard, Portfolio, Market, AI, More). The "More" sheet holds
+Blockchain Explorer, Profile, Settings, and (for admins) the Admin console.
+
+## Backend integration
+
+This app talks directly to the FastAPI backend in `code/backend` — no separate mobile
+API. Key endpoints used: `POST /token`, `POST /users/`, `GET /users/me`,
+`GET|POST|PUT|DELETE /portfolio/...`, `GET /market/...`, `GET /ai/...`,
+`GET /blockchain/...`, and `GET|PUT /admin/...` (admin role required). See
+`src/lib/types.ts` for the full response shapes.
+
+## Optional: Cloudflare Workers deployment
+
+This project can also be deployed as a Cloudflare Worker via `@opennextjs/cloudflare`:
 
 ```bash
-# Build for production
-npm run build
-# or
-pnpm build
-
-# Start production server
-npm start
-# or
-pnpm start
+npm run build:worker
+npm run preview     # local Workers runtime preview
 ```
 
-### Testing
-
-```bash
-# Run tests
-npm test
-# or
-pnpm test
-
-# Run tests with coverage
-npm test -- --coverage
-```
-
-## Project Structure
-
-```
-mobile-frontend/
-├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── dashboard/         # Dashboard page
-│   │   ├── portfolio/         # Portfolio management
-│   │   ├── market-analysis/   # Market analysis
-│   │   ├── recommendations/   # AI recommendations
-│   │   └── __tests__/         # Page tests
-│   ├── components/
-│   │   ├── layout/            # Layout components (Navbar, BottomNav)
-│   │   ├── ui/                # Reusable UI components
-│   │   ├── portfolio/         # Portfolio-specific components
-│   │   └── __tests__/         # Component tests
-│   ├── lib/
-│   │   ├── api.tsx            # API client and context
-│   │   ├── blockchain.tsx     # Blockchain integration
-│   │   ├── utils.ts           # Utility functions
-│   │   └── __tests__/         # Library tests
-│   └── hooks/                 # Custom React hooks
-├── public/                    # Static assets
-│   ├── manifest.json          # PWA manifest
-│   └── icons/                 # App icons
-├── .env.example               # Environment variables template
-├── jest.config.js             # Jest configuration
-├── jest.setup.js              # Jest setup file
-├── next.config.ts             # Next.js configuration
-├── tailwind.config.ts         # Tailwind configuration
-└── tsconfig.json              # TypeScript configuration
-```
-
-## Features
-
-### Implemented
-
-✅ **Dashboard**
-
-- Portfolio overview with stats
-- Performance charts
-- Recent transactions
-- AI insights
-
-✅ **Portfolio Management**
-
-- Multiple portfolios support
-- Asset allocation visualization
-- Performance analytics with Sharpe ratio, volatility, drawdown
-- Complete transaction history with filtering
-
-✅ **Market Analysis**
-
-- Real-time market stats
-- Trending assets
-- Sector performance
-- Market news
-
-✅ **AI Recommendations**
-
-- Personalized investment suggestions
-- Risk-based recommendations
-- Market sentiment analysis
-- Portfolio optimization tips
-
-✅ **Mobile Optimization**
-
-- Responsive design for all screen sizes
-- Touch-friendly interactions
-- Bottom navigation for mobile
-- Optimized tables and charts
-
-✅ **PWA Features**
-
-- Installable on mobile devices
-- Offline-ready manifest
-- Mobile-first design
-
-### Testing Coverage
-
-- Unit tests for all major components
-- Integration tests for page flows
-- API client tests
-- Utility function tests
-
-## Backend Integration
-
-### Setting Up the Backend
-
-1. Navigate to the backend directory:
-
-```bash
-cd ../code/backend
-```
-
-2. Set up Python environment:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-3. Configure backend environment variables (create `.env` in backend):
-
-```env
-DATABASE_URL=postgresql://user:password@localhost/quantumnest
-REDIS_URL=redis://localhost:6379
-SECRET_KEY=your-secret-key
-```
-
-4. Run database migrations:
-
-```bash
-python manage.py migrate
-```
-
-5. Start the backend server:
-
-```bash
-python manage.py runserver
-# or
-uvicorn main:app --reload
-```
-
-The backend should now be running on `http://localhost:8000`.
-
-### API Endpoints Used
-
-The mobile frontend communicates with these backend endpoints:
-
-- `GET /api/portfolio/stats` - Portfolio statistics
-- `GET /api/portfolio/list` - User portfolios
-- `GET /api/assets/trending` - Trending assets
-- `GET /api/market/stats` - Market statistics
-- `GET /api/recommendations` - AI recommendations
-- `POST /api/transactions` - Create transaction
-- `GET /api/transactions/history` - Transaction history
-
-## Blockchain Integration
-
-### Setup (Optional)
-
-1. Install MetaMask or another Ethereum wallet
-2. Add Goerli testnet to your wallet
-3. Get testnet ETH from a faucet
-4. Update `.env.local` with your Infura project ID
-5. Set `NEXT_PUBLIC_ENABLE_BLOCKCHAIN=true`
-
-### Features
-
-- Wallet connection (MetaMask)
-- Smart contract interactions
-- Tokenized asset management
-- On-chain portfolio tracking
-
-## Troubleshooting
-
-### Common Issues
-
-**Build errors with peer dependencies:**
-
-```bash
-npm install --legacy-peer-deps
-```
-
-**Port 3000 already in use:**
-
-```bash
-# Use a different port
-PORT=3001 npm run dev
-```
-
-**API connection errors:**
-
-- Ensure backend is running on `http://localhost:8000`
-- Check `.env.local` has correct `NEXT_PUBLIC_API_URL`
-- Verify CORS is configured on backend
-
-## Performance Optimization
-
-- Dynamic imports for heavy components
-- Image optimization with Next.js Image
-- Code splitting with App Router
-- Chart.js lazy loading
-- Responsive images and icons
-
-## Contributing
-
-1. Fix import case sensitivity issues
-2. Follow existing code structure
-3. Add tests for new features
-4. Update documentation
-
-## License
-
-MIT License - see LICENSE file for details
+Cloudflare-specific bindings live in `wrangler.toml`. This path is optional — the app
+runs anywhere Next.js runs (Node.js server, Vercel, Docker, etc.) via `npm start`.

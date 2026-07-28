@@ -119,7 +119,7 @@ WORKDIR /workspace
 
 # Healthcheck: verify critical tools are available
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD terraform version && kubectl version --client && helm version && aws --version || exit 1
+    CMD terraform version && kubectl version --client && helm version && aws --version && ansible --version || exit 1
 
 USER infraops
 

@@ -18,8 +18,8 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Component directories
 WEB_FRONTEND_DIR="${PROJECT_DIR}/web-frontend"
 MOBILE_FRONTEND_DIR="${PROJECT_DIR}/mobile-frontend"
-BACKEND_DIR="${PROJECT_DIR}/backend"
-BLOCKCHAIN_DIR="${PROJECT_DIR}/blockchain"
+BACKEND_DIR="${PROJECT_DIR}/code/backend"
+BLOCKCHAIN_DIR="${PROJECT_DIR}/code/blockchain"
 
 # Output directory for reports
 REPORTS_DIR="${PROJECT_DIR}/dependency_reports"
@@ -146,7 +146,7 @@ function check_dependencies {
       # Extract and display key dependencies
       echo ""
       echo "Key dependencies:"
-      grep -A 20 '"dependencies"' "${WEB_FRONTEND_DIR}/package.json" | grep -v '"dependencies"' | grep -v '}' | sed 's/[",]//g' | sed 's/^ *//g'
+      sed -n '/"dependencies": {/,/}/p' "${WEB_FRONTEND_DIR}/package.json" | sed '1d;$d' | sed 's/[",]//g' | sed 's/^ *//g'
     else
       echo "package.json: Not found"
     fi
@@ -173,7 +173,7 @@ function check_dependencies {
       # Extract and display key dependencies
       echo ""
       echo "Key dependencies:"
-      grep -A 20 '"dependencies"' "${MOBILE_FRONTEND_DIR}/package.json" | grep -v '"dependencies"' | grep -v '}' | sed 's/[",]//g' | sed 's/^ *//g'
+      sed -n '/"dependencies": {/,/}/p' "${MOBILE_FRONTEND_DIR}/package.json" | sed '1d;$d' | sed 's/[",]//g' | sed 's/^ *//g'
     else
       echo "package.json: Not found"
     fi
@@ -225,7 +225,7 @@ function check_dependencies {
       # Extract and display key dependencies
       echo ""
       echo "Key dependencies:"
-      grep -A 20 '"dependencies"' "${BLOCKCHAIN_DIR}/package.json" | grep -v '"dependencies"' | grep -v '}' | sed 's/[",]//g' | sed 's/^ *//g'
+      sed -n '/"dependencies": {/,/}/p' "${BLOCKCHAIN_DIR}/package.json" | sed '1d;$d' | sed 's/[",]//g' | sed 's/^ *//g'
     else
       echo "package.json: Not found"
     fi
@@ -280,15 +280,11 @@ function check_outdated_dependencies {
 
     if [ -f "${MOBILE_FRONTEND_DIR}/package.json" ]; then
       if [ -d "${MOBILE_FRONTEND_DIR}/node_modules" ]; then
-        echo "Running pnpm outdated in ${MOBILE_FRONTEND_DIR}..."
+        echo "Running npm outdated in ${MOBILE_FRONTEND_DIR}..."
         echo ""
-        if command_exists pnpm; then
-          (cd "${MOBILE_FRONTEND_DIR}" && pnpm outdated) || echo "Failed to check outdated dependencies"
-        else
-          echo "pnpm not installed. Please install pnpm or use npm/yarn instead."
-        fi
+        (cd "${MOBILE_FRONTEND_DIR}" && npm outdated --depth=0) || echo "Failed to check outdated dependencies"
       else
-        echo "node_modules not found. Please run 'pnpm install' in ${MOBILE_FRONTEND_DIR} first."
+        echo "node_modules not found. Please run 'npm install' in ${MOBILE_FRONTEND_DIR} first."
       fi
     else
       echo "package.json not found in ${MOBILE_FRONTEND_DIR}"
@@ -387,15 +383,11 @@ function security_audit {
 
     if [ -f "${MOBILE_FRONTEND_DIR}/package.json" ]; then
       if [ -d "${MOBILE_FRONTEND_DIR}/node_modules" ]; then
-        echo "Running pnpm audit in ${MOBILE_FRONTEND_DIR}..."
+        echo "Running npm audit in ${MOBILE_FRONTEND_DIR}..."
         echo ""
-        if command_exists pnpm; then
-          (cd "${MOBILE_FRONTEND_DIR}" && pnpm audit) || echo "Vulnerabilities found or audit failed"
-        else
-          echo "pnpm not installed. Please install pnpm or use npm/yarn instead."
-        fi
+        (cd "${MOBILE_FRONTEND_DIR}" && npm audit) || echo "Vulnerabilities found or audit failed"
       else
-        echo "node_modules not found. Please run 'pnpm install' in ${MOBILE_FRONTEND_DIR} first."
+        echo "node_modules not found. Please run 'npm install' in ${MOBILE_FRONTEND_DIR} first."
       fi
     else
       echo "package.json not found in ${MOBILE_FRONTEND_DIR}"
@@ -528,9 +520,9 @@ function generate_report {
 
     if [ -f "${WEB_FRONTEND_DIR}/package.json" ]; then
       echo "### package.json"
-      echo "```json"
+      echo '```json'
       cat "${WEB_FRONTEND_DIR}/package.json"
-      echo "```"
+      echo '```'
       echo ""
 
       if [ -d "${WEB_FRONTEND_DIR}/node_modules" ]; then
@@ -558,9 +550,9 @@ function generate_report {
 
     if [ -f "${MOBILE_FRONTEND_DIR}/package.json" ]; then
       echo "### package.json"
-      echo "```json"
+      echo '```json'
       cat "${MOBILE_FRONTEND_DIR}/package.json"
-      echo "```"
+      echo '```'
       echo ""
 
       if [ -d "${MOBILE_FRONTEND_DIR}/node_modules" ]; then
@@ -569,11 +561,7 @@ function generate_report {
         echo ""
 
         echo "### Top-level Dependencies"
-        if command_exists pnpm; then
-          (cd "${MOBILE_FRONTEND_DIR}" && pnpm list) || echo "Failed to list dependencies"
-        else
-          echo "pnpm not installed. Cannot list dependencies."
-        fi
+        (cd "${MOBILE_FRONTEND_DIR}" && npm list --depth=0) || echo "Failed to list dependencies"
         echo ""
       else
         echo "node_modules not found. Dependencies not installed."
@@ -592,9 +580,9 @@ function generate_report {
 
     if [ -f "${BACKEND_DIR}/requirements.txt" ]; then
       echo "### requirements.txt"
-      echo "```"
+      echo '```'
       cat "${BACKEND_DIR}/requirements.txt"
-      echo "```"
+      echo '```'
       echo ""
 
       if [ -d "${PROJECT_DIR}/venv" ]; then
@@ -619,9 +607,9 @@ function generate_report {
 
     if [ -f "${BLOCKCHAIN_DIR}/package.json" ]; then
       echo "### package.json"
-      echo "```json"
+      echo '```json'
       cat "${BLOCKCHAIN_DIR}/package.json"
-      echo "```"
+      echo '```'
       echo ""
 
       if [ -d "${BLOCKCHAIN_DIR}/node_modules" ]; then
@@ -652,14 +640,14 @@ function generate_report {
     echo "- pipdeptree (for Python)"
     echo ""
     echo "Example commands:"
-    echo "```bash"
+    echo '```bash'
     echo "# For JavaScript/TypeScript projects"
     echo "npx dependency-cruiser --output-type dot web-frontend | dot -T svg > web-frontend-dependencies.svg"
     echo ""
     echo "# For Python projects"
     echo "pip install pipdeptree"
     echo "pipdeptree --graph-output svg > backend-dependencies.svg"
-    echo "```"
+    echo '```'
     echo ""
   } >> "$report_file"
 
@@ -685,7 +673,7 @@ function fix_dependencies {
 
   if [ -z "$component" ]; then
     echo -e "${YELLOW}No component specified, will attempt to fix all components.${NC}"
-    read -p "Continue? (y/n): " confirm
+    read -r -p "Continue? (y/n): " confirm
     if [ "$confirm" != "y" ]; then
       echo "Operation cancelled."
       return 0
@@ -704,11 +692,7 @@ function fix_dependencies {
     # Fix Mobile Frontend
     echo "Fixing Mobile Frontend dependencies..."
     if [ -f "${MOBILE_FRONTEND_DIR}/package.json" ]; then
-      if command_exists pnpm; then
-        (cd "${MOBILE_FRONTEND_DIR}" && pnpm install --frozen-lockfile) || echo "Failed to fix Mobile Frontend dependencies"
-      else
-        echo "pnpm not installed. Please install pnpm or use npm/yarn instead."
-      fi
+      (cd "${MOBILE_FRONTEND_DIR}" && npm ci) || echo "Failed to fix Mobile Frontend dependencies"
     else
       echo "package.json not found in ${MOBILE_FRONTEND_DIR}"
     fi
@@ -752,11 +736,7 @@ function fix_dependencies {
       mobile-frontend|mobile)
         echo -e "${BLUE}Attempting to fix Mobile Frontend dependencies...${NC}"
         if [ -f "${MOBILE_FRONTEND_DIR}/package.json" ]; then
-          if command_exists pnpm; then
-            (cd "${MOBILE_FRONTEND_DIR}" && pnpm install --frozen-lockfile) || echo "Failed to fix Mobile Frontend dependencies"
-          else
-            echo "pnpm not installed. Please install pnpm or use npm/yarn instead."
-          fi
+          (cd "${MOBILE_FRONTEND_DIR}" && npm ci) || echo "Failed to fix Mobile Frontend dependencies"
         else
           echo "package.json not found in ${MOBILE_FRONTEND_DIR}"
         fi
@@ -798,7 +778,7 @@ function fix_dependencies {
 }
 
 # Main script execution
-case "$1" in
+case "${1:-help}" in
   check)
     check_dependencies
     ;;
@@ -812,13 +792,13 @@ case "$1" in
     generate_report
     ;;
   fix)
-    fix_dependencies "$2"
+    fix_dependencies "${2:-}"
     ;;
   help|--help|-h)
     show_help
     ;;
   *)
-    echo -e "${RED}Error: Unknown command '$1'${NC}"
+    echo -e "${RED}Error: Unknown command '${1}'${NC}"
     show_help
     exit 1
     ;;

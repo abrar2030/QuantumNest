@@ -1,9 +1,18 @@
 variable "name"        {}
 variable "environment" {}
 variable "vpc_id"      {}
-variable "private_subnets_cidr" { type = list(string); default = [] }
-variable "public_subnets_cidr"  { type = list(string); default = [] }
-variable "tags"        { type = map(string); default = {} }
+variable "private_subnets_cidr" {
+  type = list(string)
+  default = []
+}
+variable "public_subnets_cidr"  {
+  type = list(string)
+  default = []
+}
+variable "tags"        {
+  type = map(string)
+  default = {}
+}
 
 # Load Balancer Security Group
 resource "aws_security_group" "lb" {

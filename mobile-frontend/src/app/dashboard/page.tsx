@@ -1,286 +1,421 @@
 "use client";
 
-// Removed Navbar import as it's handled in layout.tsx
-import { StatCard } from "@/components/ui/Cards"; // Assuming Cards.tsx exports StatCard
-import { DoughnutChart, LineChart } from "@/components/ui/Charts"; // Assuming Charts.tsx exports these
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { formatCurrency } from "@/lib/utils";
+  ArrowRight,
+  Layers,
+  Newspaper,
+  PieChart as PieChartIcon,
+  Sparkles,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/finance/page-header";
+import { StatCard } from "@/components/finance/stat-card";
+import { ChangeBadge } from "@/components/finance/change-badge";
+import {
+  AllocationChart,
+  AllocationLegend,
+} from "@/components/finance/allocation-chart";
+import { PerformanceBarChart } from "@/components/finance/bar-chart";
+import { EmptyState, ErrorState } from "@/components/finance/empty-state";
+import { useApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { useAssetCatalog } from "@/hooks/use-asset-catalog";
+import { displayName, formatCurrency, formatDate } from "@/lib/utils";
+import type {
+  MarketRecommendations,
+  MarketSummary,
+  Portfolio,
+  PortfolioSummary,
+  PortfolioWithAssets,
+  SectorPerformanceResponse,
+  Transaction,
+} from "@/lib/types";
 
-export default function Dashboard() {
-  // Mock data for dashboard
-  const portfolioValue = 1250000;
-  const portfolioChange = 5.2;
-  const totalAssets = 12;
-  const totalTransactions = 48;
+function DashboardContent() {
+  const { get } = useApi();
+  const { user } = useAuth();
+  const { byId: assetsById, isLoading: assetsLoading } = useAssetCatalog();
 
-  // Mock data for portfolio allocation chart
-  const allocationData = {
-    labels: ["Stocks", "Bonds", "Crypto", "Real Estate", "Commodities"],
-    datasets: [
-      {
-        data: [45, 20, 15, 12, 8],
-        backgroundColor: [
-          "rgba(99, 102, 241, 0.8)",
-          "rgba(79, 70, 229, 0.8)",
-          "rgba(67, 56, 202, 0.8)",
-          "rgba(55, 48, 163, 0.8)",
-          "rgba(49, 46, 129, 0.8)",
-        ],
-        borderColor: [
-          "rgba(99, 102, 241, 1)",
-          "rgba(79, 70, 229, 1)",
-          "rgba(67, 56, 202, 1)",
-          "rgba(55, 48, 163, 1)",
-          "rgba(49, 46, 129, 1)",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data for performance chart
-  const performanceData = {
-    labels: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
-    datasets: [
-      {
-        label: "Portfolio Performance",
-        data: [
-          1000000, 1020000, 1050000, 1040000, 1080000, 1100000, 1150000,
-          1180000, 1200000, 1220000, 1240000, 1250000,
-        ],
-        borderColor: "rgba(99, 102, 241, 1)",
-        backgroundColor: "rgba(99, 102, 241, 0.1)",
-        fill: true,
-      },
-      {
-        label: "Benchmark",
-        data: [
-          1000000, 1010000, 1030000, 1020000, 1050000, 1070000, 1100000,
-          1120000, 1140000, 1150000, 1160000, 1170000,
-        ],
-        borderColor: "rgba(156, 163, 175, 1)",
-        backgroundColor: "rgba(156, 163, 175, 0.1)",
-        fill: true,
-      },
-    ],
-  };
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [summaries, setSummaries] = useState<PortfolioSummary[]>([]);
+  const [primaryPortfolio, setPrimaryPortfolio] =
+    useState<PortfolioWithAssets | null>(null);
+  const [marketSummary, setMarketSummary] = useState<MarketSummary | null>(
+    null,
+  );
+  const [sectorPerformance, setSectorPerformance] =
+    useState<SectorPerformanceResponse | null>(null);
+  const [aiOutlook, setAiOutlook] = useState<MarketRecommendations | null>(
+    null,
+  );
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+    [],
+  );
 
-  // Mock data for recent transactions
-  const recentTransactions = [
-    {
-      id: 1,
-      type: "Buy",
-      asset: "AAPL",
-      amount: 10,
-      price: 180.25,
-      total: 1802.5,
-      date: "2025-04-10",
-    },
-    {
-      id: 2,
-      type: "Sell",
-      asset: "TSLA",
-      amount: 5,
-      price: 210.75,
-      total: 1053.75,
-      date: "2025-04-08",
-    },
-    {
-      id: 3,
-      type: "Buy",
-      asset: "ETH",
-      amount: 2.5,
-      price: 3200.0,
-      total: 8000.0,
-      date: "2025-04-05",
-    },
-    {
-      id: 4,
-      type: "Buy",
-      asset: "MSFT",
-      amount: 8,
-      price: 410.5,
-      total: 3284.0,
-      date: "2025-04-02",
-    },
-    {
-      id: 5,
-      type: "Sell",
-      asset: "BTC",
-      amount: 0.5,
-      price: 65000.0,
-      total: 32500.0,
-      date: "2025-03-28",
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const portfolioList = await get<Portfolio[]>("/portfolio/", {
+          limit: 50,
+        });
+        if (cancelled) return;
+        setPortfolios(portfolioList);
+
+        const summaryResults = await Promise.all(
+          portfolioList.map((p) =>
+            get<PortfolioSummary>(`/portfolio/summary/${p.id}`).catch(
+              () => null,
+            ),
+          ),
+        );
+        const validSummaries = summaryResults.filter(
+          (s): s is PortfolioSummary => s !== null,
+        );
+        if (cancelled) return;
+        setSummaries(validSummaries);
+
+        const top = [...validSummaries].sort(
+          (a, b) => b.total_value - a.total_value,
+        )[0];
+        if (top) {
+          get<PortfolioWithAssets>(`/portfolio/${top.portfolio_id}`)
+            .then((data) => !cancelled && setPrimaryPortfolio(data))
+            .catch(() => {});
+        }
+
+        const [summaryRes, sectorRes, aiRes, txRes] = await Promise.allSettled([
+          get<MarketSummary>("/market/market_summary"),
+          get<SectorPerformanceResponse>("/market/sector_performance", {
+            period: "1m",
+          }),
+          get<MarketRecommendations>("/ai/recommendations/market"),
+          get<Transaction[]>("/market/transactions/", { limit: 5 }),
+        ]);
+        if (cancelled) return;
+        if (summaryRes.status === "fulfilled")
+          setMarketSummary(summaryRes.value);
+        if (sectorRes.status === "fulfilled")
+          setSectorPerformance(sectorRes.value);
+        if (aiRes.status === "fulfilled") setAiOutlook(aiRes.value);
+        if (txRes.status === "fulfilled") setRecentTransactions(txRes.value);
+      } catch {
+        if (!cancelled) setError("We couldn't load your dashboard right now.");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const totalValue = summaries.reduce((sum, s) => sum + s.total_value, 0);
+  const totalCost = summaries.reduce((sum, s) => sum + s.total_cost, 0);
+  const totalReturn =
+    totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
+  const totalHoldings = summaries.reduce((sum, s) => sum + s.total_assets, 0);
+
+  const allocation =
+    primaryPortfolio?.assets.map((holding) => {
+      const asset = assetsById.get(holding.asset_id);
+      const value =
+        holding.current_value ?? holding.quantity * holding.purchase_price;
+      return { name: asset?.symbol || `#${holding.asset_id}`, value };
+    }) || [];
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Dashboard"
+          description="Your portfolio, at a glance."
+        />
+        <ErrorState message={error} onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
 
   return (
-    // Removed min-h-screen and background color as they are handled in layout
-    <div className="space-y-8">
-      {/* Removed Navbar rendering */}
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-        Dashboard
-      </h1>
+    <div className="space-y-6">
+      <PageHeader
+        title={`Welcome back${user ? `, ${displayName(user)}` : ""}`}
+        description="Here's what's happening across your portfolios today."
+        actions={
+          <Button asChild>
+            <Link href="/portfolio">
+              <Wallet className="h-4 w-4" /> Manage portfolios
+            </Link>
+          </Button>
+        }
+      />
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Portfolio Value"
-          value={formatCurrency(portfolioValue)}
-          change={portfolioChange}
-          description="vs. last month"
-        />
-        <StatCard title="Total Assets" value={totalAssets} />
-        <StatCard
-          title="Transactions" // Shortened title for mobile
-          value={totalTransactions}
+          label="Total portfolio value"
+          value={formatCurrency(totalValue)}
+          change={totalReturn}
+          icon={Wallet}
+          isLoading={isLoading}
         />
         <StatCard
-          title="Perf. (YTD)" // Shortened title for mobile
-          value="+12.5%"
-          description="vs bench +8.3%" // Shortened description
+          label="Total unrealized return"
+          value={formatCurrency(totalValue - totalCost)}
+          icon={TrendingUp}
+          isLoading={isLoading}
+          hint={`vs ${formatCurrency(totalCost)} invested`}
+        />
+        <StatCard
+          label="Active portfolios"
+          value={String(portfolios.length)}
+          icon={Layers}
+          isLoading={isLoading}
+        />
+        <StatCard
+          label="Total holdings"
+          value={String(totalHoldings)}
+          icon={PieChartIcon}
+          isLoading={isLoading}
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <LineChart
-            data={performanceData}
-            title="Portfolio Performance"
-            height={300} // Adjusted height slightly
-          />
-        </div>
-        <div>
-          <DoughnutChart
-            data={allocationData}
-            title="Asset Allocation"
-            height={300} // Adjusted height slightly
-          />
-        </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="font-display">Sector performance</CardTitle>
+            <span className="text-xs text-muted-foreground">Last month</span>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-64 w-full" />
+            ) : sectorPerformance?.data.length ? (
+              <PerformanceBarChart data={sectorPerformance.data} height={260} />
+            ) : (
+              <EmptyState
+                icon={TrendingUp}
+                title="No sector data available"
+                description="Sector performance will appear here once market data syncs."
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-display">
+              {primaryPortfolio
+                ? `${primaryPortfolio.name} allocation`
+                : "Allocation"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading || assetsLoading ? (
+              <Skeleton className="h-52 w-full" />
+            ) : allocation.length ? (
+              <>
+                <AllocationChart data={allocation} height={190} />
+                <div className="mt-4">
+                  <AllocationLegend data={allocation} />
+                </div>
+              </>
+            ) : (
+              <EmptyState
+                icon={PieChartIcon}
+                title="No holdings yet"
+                description="Add assets to a portfolio to see your allocation breakdown."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/portfolio">Go to portfolios</Link>
+                  </Button>
+                }
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Recent Transactions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 sm:p-6">
-          {" "}
-          {/* Remove padding on smallest screens for table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Asset</TableHead>
-                <TableHead className="hidden sm:table-cell">
-                  Amount
-                </TableHead>{" "}
-                {/* Hide on small screens */}
-                <TableHead className="hidden md:table-cell">
-                  Price
-                </TableHead>{" "}
-                {/* Hide on small/medium screens */}
-                <TableHead>Total</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  Date
-                </TableHead>{" "}
-                {/* Hide on small/medium/large screens */}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell
-                    className={
-                      transaction.type === "Buy"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }
-                  >
-                    {transaction.type}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {transaction.asset}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {transaction.amount}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {formatCurrency(transaction.price)}
-                  </TableCell>
-                  <TableCell>{formatCurrency(transaction.total)}</TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {transaction.date}
-                  </TableCell>
-                </TableRow>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="font-display">Recent activity</CardTitle>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/portfolio">
+                View all <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : recentTransactions.length ? (
+              recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between border-b border-border/60 py-3 last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Wallet className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium capitalize">
+                        {tx.transaction_type}
+                        {tx.asset_id
+                          ? ` · ${assetsById.get(tx.asset_id)?.symbol || `#${tx.asset_id}`}`
+                          : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(tx.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold">
+                      {formatCurrency(tx.amount)}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="mt-0.5 text-[10px] capitalize"
+                    >
+                      {tx.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyState
+                icon={Wallet}
+                title="No transactions yet"
+                description="Your buy, sell, and transfer activity will show up here."
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <CardTitle className="font-display">AI market outlook</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <Skeleton className="h-40 w-full" />
+            ) : aiOutlook ? (
+              <>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {(
+                    [
+                      ["Short", aiOutlook.market_outlook.short_term],
+                      ["Medium", aiOutlook.market_outlook.medium_term],
+                      ["Long", aiOutlook.market_outlook.long_term],
+                    ] as const
+                  ).map(([label, outlook]) => (
+                    <div key={label} className="rounded-lg bg-muted/50 p-2.5">
+                      <p className="text-[10px] uppercase text-muted-foreground">
+                        {label}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold capitalize text-foreground">
+                        {outlook}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Top asset calls
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {aiOutlook.asset_recommendations.slice(0, 3).map((rec) => (
+                      <div
+                        key={rec.asset_symbol}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="font-medium">{rec.asset_symbol}</span>
+                        <Badge
+                          className={
+                            rec.recommendation === "buy"
+                              ? "bg-success/10 text-success hover:bg-success/10"
+                              : rec.recommendation === "sell"
+                                ? "bg-destructive/10 text-destructive hover:bg-destructive/10"
+                                : "bg-muted text-muted-foreground"
+                          }
+                        >
+                          {rec.recommendation}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full" asChild>
+                  <Link href="/recommendations">
+                    View full AI insights <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <EmptyState
+                icon={Sparkles}
+                title="AI insights unavailable"
+                description="Check back shortly for updated recommendations."
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {marketSummary && (
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-2">
+            <Newspaper className="h-4 w-4 text-primary" />
+            <CardTitle className="font-display">Market snapshot</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {marketSummary.indices.map((index) => (
+                <div
+                  key={index.name}
+                  className="rounded-lg border border-border/60 p-4"
+                >
+                  <p className="text-sm text-muted-foreground">{index.name}</p>
+                  <p className="mt-1 font-display text-lg font-semibold">
+                    {index.value.toLocaleString()}
+                  </p>
+                  <ChangeBadge value={index.change_percent} className="mt-2" />
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* AI Insights */}
-      <Card>
-        <CardHeader>
-          <CardTitle>AI Insights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800">
-              <h4 className="font-semibold text-indigo-900 dark:text-indigo-300 mb-2">
-                Portfolio Optimization
-              </h4>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Based on your risk profile and market conditions, our AI
-                suggests increasing your allocation to technology stocks by 5%
-                and reducing exposure to consumer discretionary by 3%.
-              </p>
             </div>
-            <div className="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-100 dark:border-purple-800">
-              <h4 className="font-semibold text-purple-900 dark:text-purple-300 mb-2">
-                Market Sentiment
-              </h4>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Current market sentiment analysis shows positive trends for
-                renewable energy and AI sectors. Consider exploring
-                opportunities in these areas for potential growth.
-              </p>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
-                Risk Assessment
-              </h4>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Your portfolio's current volatility is 12% lower than the market
-                average. The diversification strategy is effectively managing
-                risk while maintaining competitive returns.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <AppShell>
+      <DashboardContent />
+    </AppShell>
   );
 }

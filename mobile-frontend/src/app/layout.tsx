@@ -1,22 +1,28 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import MobileBottomNav from "@/components/layout/MobileBottomNav";
-import Navbar from "@/components/layout/Navbar";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "QuantumNest Mobile",
-  description: "Mobile frontend for QuantumNest investment platform",
+  title: {
+    default: "QuantumNest | AI-Powered Investing",
+    template: "%s | QuantumNest",
+  },
+  description:
+    "The QuantumNest mobile experience: AI-driven portfolio insights, live markets, and tokenized assets in your pocket.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "QuantumNest",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#0a0e1a",
 };
 
 export default function RootLayout({
@@ -25,28 +31,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-        />
-        <meta name="theme-color" content="#000000" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta
-          name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
-        />
-        <link rel="manifest" href="/manifest.json" />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
-      >
-        <div className="flex flex-col min-h-screen pb-16 md:pb-0">
-          <Navbar />
-          <main className="flex-1 container mx-auto px-4 py-4">{children}</main>
-          <MobileBottomNav />
-        </div>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -22,7 +22,13 @@ sudo apt-get install -y ansible
 pip install ansible ansible-lint
 ```
 
-### 2. Configure Inventory
+### 2. Install Required Collections
+
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
+
+### 3. Configure Inventory
 
 ```bash
 # Copy example inventory
@@ -32,7 +38,7 @@ cp inventory/hosts.example.yml inventory/hosts.yml
 vi inventory/hosts.yml
 ```
 
-### 3. Configure Vault (for secrets)
+### 4. Configure Vault (for secrets)
 
 ```bash
 # Create vault file

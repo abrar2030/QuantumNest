@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "types": ["@cloudflare/workers-types/2023-07-01", "node", "jest"],
+    "types": ["@cloudflare/workers-types", "node", "jest"],
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,

@@ -6,7 +6,14 @@ metadata:
     name: quantumnest-prod
     environment: production
     compliance: pci-dss-sox-gdpr
-    pod-security.kubernetes.io/enforce: restricted
+    # NOTE: enforcement is "baseline", not "restricted". The backend's
+    # istio-proxy sidecar (see backend-deployment.yaml) requires the
+    # NET_ADMIN and NET_RAW capabilities to intercept traffic; the
+    # "restricted" profile only permits adding back NET_BIND_SERVICE, so it
+    # would reject this namespace's own backend deployment at admission
+    # time. Switch to Istio's CNI plugin (which redirects traffic at the
+    # node level instead of the sidecar) if "restricted" is required.
+    pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
 ---

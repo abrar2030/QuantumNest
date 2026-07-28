@@ -13,10 +13,11 @@ data:
   ENVIRONMENT: "production"
   LOG_FORMAT: "json"
   LOG_LEVEL: "INFO"
-  METRICS_PORT: "9090"
-  HEALTH_PORT: "8081"
   CORS_ENABLED: "true"
-  CORS_ORIGINS: "https://app.quantumnest.com,https://admin.quantumnest.com"
+  # NOTE: the app reads ALLOWED_ORIGINS (see code/backend/app/main.py's
+  # CORSMiddleware setup), not CORS_ORIGINS - using the wrong key here
+  # silently falls back to the app's wildcard "*" default in production.
+  ALLOWED_ORIGINS: "https://app.quantumnest.com,https://m.quantumnest.com"
   RATE_LIMIT_ENABLED: "true"
   RATE_LIMIT_REQUESTS_PER_MINUTE: "1000"
   SESSION_TIMEOUT_MINUTES: "30"

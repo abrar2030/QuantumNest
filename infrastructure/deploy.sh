@@ -120,7 +120,8 @@ deploy_kubernetes() {
     apply)
       kubectl apply -k "$overlay_dir"
       kubectl rollout status deployment/quantumnest-backend -n "quantumnest-${env}" --timeout=300s
-      kubectl rollout status deployment/quantumnest-frontend -n "quantumnest-${env}" --timeout=300s
+      kubectl rollout status deployment/quantumnest-web-frontend -n "quantumnest-${env}" --timeout=300s
+      kubectl rollout status deployment/quantumnest-mobile-frontend -n "quantumnest-${env}" --timeout=300s
       log_success "Kubernetes deployed for ${env}"
       ;;
     status)
@@ -144,7 +145,7 @@ deploy_monitoring() {
     up)
       docker compose --env-file .env up -d prometheus alertmanager grafana elasticsearch kibana logstash node-exporter cadvisor
       log_success "Monitoring stack started"
-      log_info "Grafana:       http://localhost:${GRAFANA_PORT:-3000}"
+      log_info "Grafana:       http://localhost:${GRAFANA_PORT:-3030}"
       log_info "Prometheus:    http://localhost:${PROMETHEUS_PORT:-9090}"
       log_info "Kibana:        http://localhost:${KIBANA_PORT:-5601}"
       log_info "Alertmanager:  http://localhost:${ALERTMANAGER_PORT:-9093}"

@@ -1,315 +1,238 @@
 "use client";
 
-// FIXED: getMockAssets was defined AFTER the useEffect that referenced it in its
-// dependency array, causing a stale closure. Wrapped in useCallback so it's stable
-// and hoisted before the useEffect.
-
-import { useCallback, useEffect, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/Cards";
-import { DoughnutChart, LineChart } from "@/components/ui/Charts";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ArrowRight, Layers, Trash2, Wallet } from "lucide-react";
+import { toast } from "sonner";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/Table";
-import { useApi } from "@/lib/api";
-import { useBlockchain } from "@/lib/blockchain";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/finance/page-header";
+import { EmptyState, ErrorState } from "@/components/finance/empty-state";
+import { ChangeBadge } from "@/components/finance/change-badge";
+import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
+import { ApiError, useApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
+import type { Portfolio, PortfolioSummary } from "@/lib/types";
 
-interface PortfolioAsset {
-  id: string;
-  symbol: string;
-  name: string;
-  quantity: number;
-  averagePrice: number;
-  currentPrice: number;
-  totalValue: number;
-  profitLoss: number;
-  profitLossPercentage: number;
-}
+const riskLabels: Record<string, string> = {
+  very_low: "Very low risk",
+  low: "Low risk",
+  moderate: "Moderate risk",
+  high: "High risk",
+  very_high: "Very high risk",
+};
 
-export default function Portfolio() {
-  const { get } = useApi();
-  const { isConnected } = useBlockchain();
-  const [assets, setAssets] = useState<PortfolioAsset[]>([]);
-  const [loadingAssets, setLoadingAssets] = useState(true);
-
-  // FIXED: Moved getMockAssets to useCallback so it's defined before useEffect
-  // and stable across renders.
-  const getMockAssets = useCallback(
-    (): PortfolioAsset[] => [
-      {
-        id: "1",
-        symbol: "AAPL",
-        name: "Apple Inc.",
-        quantity: 50,
-        averagePrice: 150.0,
-        currentPrice: 180.25,
-        totalValue: 9012.5,
-        profitLoss: 1512.5,
-        profitLossPercentage: 20.17,
-      },
-      {
-        id: "2",
-        symbol: "TSLA",
-        name: "Tesla, Inc.",
-        quantity: 25,
-        averagePrice: 200.0,
-        currentPrice: 210.75,
-        totalValue: 5268.75,
-        profitLoss: 268.75,
-        profitLossPercentage: 5.38,
-      },
-      {
-        id: "3",
-        symbol: "ETH",
-        name: "Ethereum",
-        quantity: 10,
-        averagePrice: 3000.0,
-        currentPrice: 3200.0,
-        totalValue: 32000.0,
-        profitLoss: 2000.0,
-        profitLossPercentage: 6.67,
-      },
-      {
-        id: "4",
-        symbol: "MSFT",
-        name: "Microsoft Corporation",
-        quantity: 30,
-        averagePrice: 400.0,
-        currentPrice: 410.5,
-        totalValue: 12315.0,
-        profitLoss: 315.0,
-        profitLossPercentage: 2.63,
-      },
-      {
-        id: "5",
-        symbol: "GOOGL",
-        name: "Alphabet Inc.",
-        quantity: 20,
-        averagePrice: 140.0,
-        currentPrice: 142.5,
-        totalValue: 2850.0,
-        profitLoss: 50.0,
-        profitLossPercentage: 1.79,
-      },
-    ],
-    [],
+function PortfolioListContent() {
+  const { get, del } = useApi();
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [summaries, setSummaries] = useState<Record<number, PortfolioSummary>>(
+    {},
   );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  async function load() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const list = await get<Portfolio[]>("/portfolio/", { limit: 100 });
+      setPortfolios(list);
+      const entries = await Promise.all(
+        list.map(async (p) => {
+          try {
+            const summary = await get<PortfolioSummary>(
+              `/portfolio/summary/${p.id}`,
+            );
+            return [p.id, summary] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setSummaries(
+        Object.fromEntries(
+          entries.filter((e): e is [number, PortfolioSummary] => e !== null),
+        ),
+      );
+    } catch {
+      setError("We couldn't load your portfolios right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        setLoadingAssets(true);
-        const data = await get<{ assets: PortfolioAsset[] }>(
-          "/portfolio/assets",
-        );
-        setAssets(data.assets || []);
-      } catch (error) {
-        console.error("Error fetching portfolio:", error);
-        setAssets(getMockAssets());
-      } finally {
-        setLoadingAssets(false);
-      }
-    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    fetchPortfolio();
-  }, [get, getMockAssets]);
-
-  const totalValue = assets.reduce((sum, asset) => sum + asset.totalValue, 0);
-  const totalProfitLoss = assets.reduce(
-    (sum, asset) => sum + asset.profitLoss,
-    0,
-  );
-  const totalProfitLossPercentage =
-    totalValue > 0
-      ? (totalProfitLoss / (totalValue - totalProfitLoss)) * 100
-      : 0;
-
-  const allocationData = {
-    labels: assets.map((asset) => asset.symbol),
-    datasets: [
-      {
-        data: assets.map((asset) => asset.totalValue),
-        backgroundColor: [
-          "rgba(99, 102, 241, 0.8)",
-          "rgba(79, 70, 229, 0.8)",
-          "rgba(67, 56, 202, 0.8)",
-          "rgba(55, 48, 163, 0.8)",
-          "rgba(49, 46, 129, 0.8)",
-        ],
-        borderColor: [
-          "rgba(99, 102, 241, 1)",
-          "rgba(79, 70, 229, 1)",
-          "rgba(67, 56, 202, 1)",
-          "rgba(55, 48, 163, 1)",
-          "rgba(49, 46, 129, 1)",
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const performanceData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    datasets: [
-      {
-        label: "Portfolio Value",
-        data: [50000, 52000, 55000, 54000, 59000, totalValue],
-        borderColor: "rgba(99, 102, 241, 1)",
-        backgroundColor: "rgba(99, 102, 241, 0.1)",
-        fill: true,
-      },
-    ],
-  };
+  async function handleDelete(id: number) {
+    setDeletingId(id);
+    try {
+      await del(`/portfolio/${id}`);
+      toast.success("Portfolio deleted.");
+      setPortfolios((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Could not delete portfolio.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Portfolio
-          </h1>
-          <Button>Add Asset</Button>
-        </div>
-
-        {!isConnected && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
-            <p className="text-yellow-800 dark:text-yellow-300">
-              Connect your wallet to view blockchain-based assets and perform
-              transactions.
-            </p>
-          </div>
-        )}
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard
-            title="Total Value"
-            value={formatCurrency(totalValue)}
-            change={totalProfitLossPercentage}
-            description="Overall P&L"
+    <div className="space-y-6">
+      <PageHeader
+        title="Portfolios"
+        description="Create and manage portfolios across every asset class you hold."
+        actions={
+          <CreatePortfolioDialog
+            onCreated={(p) => setPortfolios((prev) => [p, ...prev])}
           />
-          <StatCard title="Total Assets" value={assets.length} />
-          <StatCard
-            title="Profit/Loss"
-            value={formatCurrency(totalProfitLoss)}
-            change={totalProfitLossPercentage}
-            description={`${totalProfitLossPercentage >= 0 ? "+" : ""}${totalProfitLossPercentage.toFixed(2)}%`}
-          />
-        </div>
+        }
+      />
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
-            <LineChart
-              data={performanceData}
-              title="Portfolio Performance"
-              height={350}
-            />
-          </div>
-          <div>
-            <DoughnutChart
-              data={allocationData}
-              title="Asset Allocation"
-              height={350}
-            />
-          </div>
+      {error ? (
+        <ErrorState message={error} onRetry={load} />
+      ) : isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-48 w-full" />
+          ))}
         </div>
+      ) : portfolios.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="No portfolios yet"
+          description="Create your first portfolio to start tracking holdings, performance, and AI recommendations."
+          action={
+            <CreatePortfolioDialog
+              onCreated={(p) => setPortfolios((prev) => [p, ...prev])}
+            />
+          }
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {portfolios.map((portfolio) => {
+            const summary = summaries[portfolio.id];
+            const returnPct =
+              summary && summary.total_cost > 0
+                ? ((summary.total_value - summary.total_cost) /
+                    summary.total_cost) *
+                  100
+                : 0;
+            return (
+              <Card key={portfolio.id} className="card-hover flex flex-col">
+                <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <Link
+                      href={`/portfolio/${portfolio.id}`}
+                      className="font-display text-base font-semibold hover:text-primary"
+                    >
+                      {portfolio.name}
+                    </Link>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {portfolio.description || "No description provided."}
+                    </p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Delete this portfolio?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently remove &quot;{portfolio.name}
+                          &quot; and its holdings. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          disabled={deletingId === portfolio.id}
+                          onClick={() => handleDelete(portfolio.id)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col justify-between gap-4">
+                  <div>
+                    <Badge variant="secondary">
+                      {riskLabels[portfolio.risk_level] || portfolio.risk_level}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="font-display text-2xl font-semibold">
+                      {summary ? formatCurrency(summary.total_value) : "—"}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      {summary && <ChangeBadge value={returnPct} />}
+                      <span className="text-xs text-muted-foreground">
+                        {summary?.total_assets ?? 0} holdings
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="justify-between"
+                    asChild
+                  >
+                    <Link href={`/portfolio/${portfolio.id}`}>
+                      View details <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-        {/* Assets Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Assets</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingAssets ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              </div>
-            ) : assets.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No assets in your portfolio. Add your first asset to get
-                started.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Avg. Price</TableHead>
-                      <TableHead>Current Price</TableHead>
-                      <TableHead>Total Value</TableHead>
-                      <TableHead>P&L</TableHead>
-                      <TableHead>P&L %</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {assets.map((asset) => (
-                      <TableRow key={asset.id}>
-                        <TableCell className="font-bold">
-                          {asset.symbol}
-                        </TableCell>
-                        <TableCell>{asset.name}</TableCell>
-                        <TableCell>{asset.quantity}</TableCell>
-                        <TableCell>
-                          {formatCurrency(asset.averagePrice)}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(asset.currentPrice)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(asset.totalValue)}
-                        </TableCell>
-                        <TableCell
-                          className={
-                            asset.profitLoss >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }
-                        >
-                          {formatCurrency(asset.profitLoss)}
-                        </TableCell>
-                        <TableCell
-                          className={
-                            asset.profitLossPercentage >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }
-                        >
-                          {asset.profitLossPercentage >= 0 ? "+" : ""}
-                          {asset.profitLossPercentage.toFixed(2)}%
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
-                              Buy
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              Sell
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
+      {!isLoading && portfolios.length > 0 && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Layers className="h-3.5 w-3.5" />
+          {portfolios.length} portfolio{portfolios.length === 1 ? "" : "s"}{" "}
+          total
+        </p>
+      )}
     </div>
+  );
+}
+
+export default function PortfolioPage() {
+  return (
+    <AppShell>
+      <PortfolioListContent />
+    </AppShell>
   );
 }

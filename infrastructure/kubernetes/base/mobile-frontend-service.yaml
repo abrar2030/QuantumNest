@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: quantumnest-mobile-frontend
+  namespace: quantumnest-prod
+  labels:
+    app: quantumnest-mobile-frontend
+    tier: frontend
+    app.kubernetes.io/name: quantumnest-mobile-frontend
+    app.kubernetes.io/component: mobile-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: quantumnest-mobile-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP

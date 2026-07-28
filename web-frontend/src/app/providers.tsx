@@ -1,17 +1,23 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { ThemeProvider } from "next-themes";
 import { ApiProvider } from "@/lib/api";
+import { AuthProvider } from "@/lib/auth-context";
 import { BlockchainProvider } from "@/lib/blockchain";
-import { AuthProvider } from "./auth/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
-// FIXED: ApiProvider must wrap AuthProvider because AuthProvider calls useApi() internally.
-// Previous order had AuthProvider as the outermost wrapper which caused a crash.
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ApiProvider>
-      <AuthProvider>
-        <BlockchainProvider>{children}</BlockchainProvider>
-      </AuthProvider>
-    </ApiProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <ApiProvider>
+        <AuthProvider>
+          <BlockchainProvider>
+            {children}
+            <Toaster position="top-right" richColors closeButton />
+          </BlockchainProvider>
+        </AuthProvider>
+      </ApiProvider>
+    </ThemeProvider>
   );
 }

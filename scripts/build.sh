@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Build script for QuantumNest project
-# This script builds the frontend for production and prepares the backend environment.
+# This script builds both frontends for production and prepares the backend environment.
 
 set -euo pipefail
 
@@ -31,6 +31,7 @@ ensure_venv() {
     echo -e "${BLUE}Creating Python virtual environment at $VENV_PATH...${NC}"
     python3 -m venv "$VENV_PATH"
   fi
+  # shellcheck disable=SC1091
   source "$VENV_PATH/bin/activate"
   echo -e "${GREEN}Virtual environment activated.${NC}"
 }
@@ -41,10 +42,10 @@ install_dependencies() {
   if [ -f "$BACKEND_DIR/requirements.txt" ]; then
     pip install -r "$BACKEND_DIR/requirements.txt" > /dev/null
   else
-    echo -e "${RED}Error: Backend requirements.txt not found at $BACKEND_DIR/requirements.txt. Skipping Python dependency install.${NC}"
+    echo -e "${RED}Error: Backend requirements.txt not found at $BACKEND_DIR/requirements.txt.${NC}"
     exit 1
   fi
-  
+
   echo -e "${BLUE}Installing/Updating Node.js dependencies in $FRONTEND_DIR...${NC}"
   if [ -d "$FRONTEND_DIR" ]; then
     (cd "$FRONTEND_DIR" && npm install > /dev/null)
@@ -55,17 +56,18 @@ install_dependencies() {
 
   echo -e "${BLUE}Installing/Updating Node.js dependencies in $MOBILE_FRONTEND_DIR...${NC}"
   if [ -d "$MOBILE_FRONTEND_DIR" ]; then
-    if command_exists pnpm; then
-      (cd "$MOBILE_FRONTEND_DIR" && pnpm install > /dev/null)
-    else
-      echo -e "${RED}Warning: pnpm not found. Falling back to npm install for $MOBILE_FRONTEND_DIR.${NC}"
-      (cd "$MOBILE_FRONTEND_DIR" && npm install > /dev/null)
-    fi
+    (cd "$MOBILE_FRONTEND_DIR" && npm install > /dev/null)
   else
     echo -e "${RED}Error: Mobile Frontend directory $MOBILE_FRONTEND_DIR not found.${NC}"
     exit 1
   fi
 }
+
+# Make sure the virtual environment is deactivated no matter how the script exits.
+cleanup() {
+  deactivate 2>/dev/null || true
+}
+trap cleanup EXIT
 
 # --- Main Execution ---
 
@@ -87,33 +89,25 @@ install_dependencies
 
 # 3. Build Web Frontend
 echo -e "${BLUE}Building Web Frontend for production...${NC}"
-if [ -d "$FRONTEND_DIR" ]; then
-  (cd "$FRONTEND_DIR" && npm run build)
-  echo -e "${GREEN}Web Frontend build completed successfully.${NC}"
-else
-  echo -e "${RED}Error: Web Frontend directory $FRONTEND_DIR not found. Skipping frontend build.${NC}"
+if [ ! -d "$FRONTEND_DIR" ]; then
+  echo -e "${RED}Error: Web Frontend directory $FRONTEND_DIR not found.${NC}"
+  exit 1
 fi
+(cd "$FRONTEND_DIR" && npm run build)
+echo -e "${GREEN}Web Frontend build completed successfully.${NC}"
 
 # 4. Build Mobile Frontend
 echo -e "${BLUE}Building Mobile Frontend for production...${NC}"
-if [ -d "$MOBILE_FRONTEND_DIR" ]; then
-  if command_exists pnpm; then
-    (cd "$MOBILE_FRONTEND_DIR" && pnpm run build)
-  else
-    echo -e "${RED}Warning: pnpm not found. Falling back to npm run build for $MOBILE_FRONTEND_DIR.${NC}"
-    (cd "$MOBILE_FRONTEND_DIR" && npm run build)
-  fi
-  echo -e "${GREEN}Mobile Frontend build completed successfully.${NC}"
-else
-  echo -e "${RED}Error: Mobile Frontend directory $MOBILE_FRONTEND_DIR not found. Skipping mobile frontend build.${NC}"
+if [ ! -d "$MOBILE_FRONTEND_DIR" ]; then
+  echo -e "${RED}Error: Mobile Frontend directory $MOBILE_FRONTEND_DIR not found.${NC}"
+  exit 1
 fi
+(cd "$MOBILE_FRONTEND_DIR" && npm run build)
+echo -e "${GREEN}Mobile Frontend build completed successfully.${NC}"
 
-# 5. Finalize Backend Environment
-echo -e "${BLUE}Finalizing backend environment...${NC}"
-# No specific build step for the backend in this simple structure
+# 5. Sanity-check the backend (byte-compile to catch syntax errors)
+echo -e "${BLUE}Verifying backend...${NC}"
+find "$BACKEND_DIR/app" -name "*.py" -print0 | xargs -0 python3 -m py_compile
 echo -e "${GREEN}Backend environment ready.${NC}"
-
-# Deactivate virtual environment
-deactivate
 
 echo -e "${GREEN}QuantumNest build process completed!${NC}"

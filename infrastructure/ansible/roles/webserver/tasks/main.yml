@@ -7,16 +7,35 @@
     state: present
   become: true
 
-- name: Configure nginx
+- name: Configure nginx site
   ansible.builtin.template:
     src: nginx.conf.j2
-    dest: /etc/nginx/nginx.conf
+    dest: /etc/nginx/sites-available/quantumnest.conf
     owner: root
     group: root
     mode: "0644"
-    validate: "/usr/sbin/nginx -t -c %s"
   become: true
   notify: reload nginx
+
+- name: Enable quantumnest site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/quantumnest.conf
+    dest: /etc/nginx/sites-enabled/quantumnest.conf
+    state: link
+  become: true
+  notify: reload nginx
+
+- name: Disable default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: true
+  notify: reload nginx
+
+- name: Validate nginx configuration
+  ansible.builtin.command: /usr/sbin/nginx -t
+  become: true
+  changed_when: false
 
 - name: Ensure nginx is enabled and running
   ansible.builtin.systemd:

@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+# PostgreSQL Client Authentication Configuration for QuantumNest
+# Generated from pg_hba.conf.j2 - do not edit directly on the host.
+#
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+# Local connections (on the database server itself)
+local   all             postgres                                peer
+local   all             all                                     scram-sha-256
+
+# IPv4 loopback
+host    all             all             127.0.0.1/32            scram-sha-256
+
+# IPv6 loopback
+host    all             all             ::1/128                 scram-sha-256
+
+# Application/internal network access
+{% for host in db_allowed_hosts | default(['127.0.0.1/32']) %}
+host    {{ db_name | default('all') }}        {{ db_user | default('all') }}            {{ host }}            scram-sha-256
+{% endfor %}

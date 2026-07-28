@@ -32,6 +32,7 @@ ensure_venv() {
     echo -e "${BLUE}Creating Python virtual environment at $VENV_PATH...${NC}"
     python3 -m venv "$VENV_PATH"
   fi
+  # shellcheck disable=SC1091
   source "$VENV_PATH/bin/activate"
   echo -e "${GREEN}Virtual environment activated.${NC}"
 }
@@ -45,9 +46,9 @@ install_dependencies() {
   else
     echo -e "${RED}Error: Backend requirements.txt not found at $BACKEND_DIR/requirements.txt. Skipping Python dependency install.${NC}"
   fi
-  
+
   echo -e "${BLUE}Installing/Updating Node.js dependencies...${NC}"
-  
+
   # Blockchain
   if [ -d "$BLOCKCHAIN_DIR" ]; then
     echo -e "${BLUE}Installing Blockchain dependencies in $BLOCKCHAIN_DIR...${NC}"
@@ -60,17 +61,44 @@ install_dependencies() {
     (cd "$WEB_FRONTEND_DIR" && npm install)
   fi
 
-  # Mobile Frontend (using pnpm as per original script's analysis)
+  # Mobile Frontend
   if [ -d "$MOBILE_FRONTEND_DIR" ]; then
     echo -e "${BLUE}Installing Mobile Frontend dependencies in $MOBILE_FRONTEND_DIR...${NC}"
-    if command_exists pnpm; then
-      (cd "$MOBILE_FRONTEND_DIR" && pnpm install)
-    else
-      echo -e "${RED}Warning: pnpm not found. Falling back to npm install for $MOBILE_FRONTEND_DIR.${NC}"
-      (cd "$MOBILE_FRONTEND_DIR" && npm install)
-    fi
+    (cd "$MOBILE_FRONTEND_DIR" && npm install)
   fi
 }
+
+# Copy a component's own .env.example to its local env file, if one doesn't
+# already exist. Each component (backend, blockchain, web-frontend,
+# mobile-frontend) ships its own .env.example — there is no single
+# project-root env.example to fan out from.
+setup_env_file() {
+  local name="$1"
+  local dir="$2"
+  local target_filename="$3"
+
+  if [ ! -d "$dir" ]; then
+    return
+  fi
+
+  if [ -f "$dir/$target_filename" ]; then
+    echo -e "${GREEN}✓ ${name} $target_filename already exists, leaving it as-is.${NC}"
+    return
+  fi
+
+  if [ -f "$dir/.env.example" ]; then
+    cp "$dir/.env.example" "$dir/$target_filename"
+    echo -e "${GREEN}✓ Created ${name} $target_filename from .env.example${NC}"
+  else
+    echo -e "${RED}Warning: ${name} has no .env.example at $dir. Skipping.${NC}"
+  fi
+}
+
+# Make sure the virtual environment is deactivated no matter how the script exits.
+cleanup() {
+  deactivate 2>/dev/null || true
+}
+trap cleanup EXIT
 
 # --- Main Execution ---
 
@@ -90,18 +118,14 @@ fi
 ensure_venv
 install_dependencies
 
-# 3. Copy environment file if it doesn't exist
-if [ ! -f "$PROJECT_ROOT/.env" ]; then
-  if [ -f "$PROJECT_ROOT/env.example" ]; then
-    echo -e "${BLUE}Creating .env from env.example...${NC}"
-    cp "$PROJECT_ROOT/env.example" "$PROJECT_ROOT/.env"
-    echo -e "${GREEN}Please review and update the .env file with your configuration.${NC}"
-  else
-    echo -e "${RED}Warning: env.example not found. Cannot create project-root .env file.${NC}"
-  fi
-fi
+# 3. Create local env files from each component's own .env.example
+echo -e "${BLUE}Setting up environment files...${NC}"
+setup_env_file "Backend" "$BACKEND_DIR" ".env"
+setup_env_file "Blockchain" "$BLOCKCHAIN_DIR" ".env"
+setup_env_file "Web Frontend" "$WEB_FRONTEND_DIR" ".env.local"
+setup_env_file "Mobile Frontend" "$MOBILE_FRONTEND_DIR" ".env.local"
+echo -e "${GREEN}Please review the generated env files and update them with your configuration.${NC}"
 
 # 4. Finalize
-deactivate
 echo -e "${GREEN}QuantumNest project setup completed successfully!${NC}"
 echo -e "${GREEN}You can now run the application using: ./scripts/run_quantumnest.sh${NC}"

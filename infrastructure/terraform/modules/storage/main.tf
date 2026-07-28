@@ -7,10 +7,16 @@ variable "node_type"          { default = "cache.r6g.large" }
 variable "num_cache_clusters" { default = 1 }
 variable "at_rest_encryption_enabled" { default = true }
 variable "transit_encryption_enabled" { default = true }
-variable "auth_token"         { default = null; sensitive = true }
+variable "auth_token"         {
+  default = null
+  sensitive = true
+}
 variable "kms_key_id"         { default = null }
 variable "snapshot_retention_limit" { default = 1 }
-variable "tags"               { type = map(string); default = {} }
+variable "tags"               {
+  type = map(string)
+  default = {}
+}
 
 resource "aws_s3_bucket" "main" {
   bucket        = "${var.app_name}-${var.environment}-assets"

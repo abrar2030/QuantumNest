@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: quantumnest-staging
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Ingress
+      name: quantumnest-ingress
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-staging
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - staging.quantumnest.com
+          - staging-m.quantumnest.com
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.quantumnest.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: staging-m.quantumnest.com
+  - target:
+      kind: ConfigMap
+      name: quantumnest-backend-config
+    patch: |-
+      - op: replace
+        path: /data/ALLOWED_ORIGINS
+        value: "https://staging.quantumnest.com,https://staging-m.quantumnest.com"
+
+replicas:
+  - name: quantumnest-backend
+    count: 2
+  - name: quantumnest-web-frontend
+    count: 1
+  - name: quantumnest-mobile-frontend
+    count: 1
+
+images:
+  - name: quantumnest/backend
+    newTag: staging
+  - name: quantumnest/web-frontend
+    newTag: staging
+  - name: quantumnest/mobile-frontend
+    newTag: staging
+
+commonLabels:
+  environment: staging

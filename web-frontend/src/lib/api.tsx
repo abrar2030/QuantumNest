@@ -3,183 +3,187 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
 } from "react";
 
+export class ApiError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(message: string, status: number, detail?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+type QueryParams = Record<string, string | number | boolean | undefined | null>;
+
 interface ApiContextType {
   apiUrl: string;
   token: string | null;
-  isLoading: boolean;
-  error: string | null;
   setToken: (token: string | null) => void;
-  get: <T>(endpoint: string) => Promise<T>;
-  post: <T>(endpoint: string, data: any) => Promise<T>;
-  put: <T>(endpoint: string, data: any) => Promise<T>;
-  delete: <T>(endpoint: string) => Promise<T>;
+  get: <T>(endpoint: string, params?: QueryParams) => Promise<T>;
+  post: <T>(endpoint: string, data?: unknown, params?: QueryParams) => Promise<T>;
+  postForm: <T>(endpoint: string, form: URLSearchParams) => Promise<T>;
+  put: <T>(endpoint: string, data?: unknown, params?: QueryParams) => Promise<T>;
+  del: <T>(endpoint: string, params?: QueryParams) => Promise<T>;
 }
 
 const ApiContext = createContext<ApiContextType | undefined>(undefined);
 
-interface ApiProviderProps {
-  children: ReactNode;
+const TOKEN_KEY = "quantumnest_auth_token";
+
+function buildQuery(params?: QueryParams): string {
+  if (!params) return "";
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      search.append(key, String(value));
+    }
+  });
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
 }
 
-export function ApiProvider({ children }: ApiProviderProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function ApiProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
-  // Get API URL from environment or default to localhost
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  // Load token from localStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedToken = localStorage.getItem("auth_token");
-      if (savedToken) {
-        setTokenState(savedToken);
+      const saved = window.localStorage.getItem(TOKEN_KEY);
+      if (saved) setTokenState(saved);
+    }
+    setHydrated(true);
+  }, []);
+
+  const setToken = useCallback((newToken: string | null) => {
+    setTokenState(newToken);
+    if (typeof window !== "undefined") {
+      if (newToken) {
+        window.localStorage.setItem(TOKEN_KEY, newToken);
+      } else {
+        window.localStorage.removeItem(TOKEN_KEY);
       }
     }
   }, []);
 
-  const setToken = (newToken: string | null) => {
-    setTokenState(newToken);
-    if (typeof window !== "undefined") {
-      if (newToken) {
-        localStorage.setItem("auth_token", newToken);
-      } else {
-        localStorage.removeItem("auth_token");
-      }
-    }
-  };
-
-  const getHeaders = () => {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    return headers;
-  };
-
-  const handleResponse = async (response: Response) => {
-    setIsLoading(false);
-
+  const handleResponse = useCallback(async (response: Response) => {
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.detail ||
-        errorData.message ||
-        `Error: ${response.status} ${response.statusText}`;
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      let detail: unknown;
+      try {
+        detail = await response.json();
+      } catch {
+        detail = null;
+      }
+      const message =
+        (detail && typeof detail === "object" && "detail" in detail
+          ? String((detail as { detail: unknown }).detail)
+          : null) || `Request failed with status ${response.status}`;
+
+      if (response.status === 401 && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("quantumnest:unauthorized"));
+      }
+
+      throw new ApiError(message, response.status, detail);
     }
 
-    // Handle 204 No Content
     if (response.status === 204) {
-      return {} as any;
+      return undefined as unknown;
     }
 
-    return response.json();
-  };
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+    return response.text();
+  }, []);
 
-  const get = async <T,>(endpoint: string): Promise<T> => {
-    setIsLoading(true);
-    setError(null);
+  const authHeaders = useCallback(
+    (extra?: HeadersInit): HeadersInit => {
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return { ...headers, ...(extra as Record<string, string>) };
+    },
+    [token],
+  );
 
-    try {
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+  const get = useCallback(
+    async <T,>(endpoint: string, params?: QueryParams): Promise<T> => {
+      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
         method: "GET",
-        headers: getHeaders(),
+        headers: authHeaders(),
       });
+      return handleResponse(response) as Promise<T>;
+    },
+    [apiUrl, authHeaders, handleResponse],
+  );
 
-      return handleResponse(response);
-    } catch (err) {
-      setIsLoading(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
-      setError(errorMessage);
-      throw err;
-    }
-  };
+  const post = useCallback(
+    async <T,>(endpoint: string, data?: unknown, params?: QueryParams): Promise<T> => {
+      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: data !== undefined ? JSON.stringify(data) : undefined,
+      });
+      return handleResponse(response) as Promise<T>;
+    },
+    [apiUrl, authHeaders, handleResponse],
+  );
 
-  const post = async <T,>(endpoint: string, data: any): Promise<T> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
+  const postForm = useCallback(
+    async <T,>(endpoint: string, form: URLSearchParams): Promise<T> => {
       const response = await fetch(`${apiUrl}${endpoint}`, {
         method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify(data),
+        headers: authHeaders({
+          "Content-Type": "application/x-www-form-urlencoded",
+        }),
+        body: form.toString(),
       });
+      return handleResponse(response) as Promise<T>;
+    },
+    [apiUrl, authHeaders, handleResponse],
+  );
 
-      return handleResponse(response);
-    } catch (err) {
-      setIsLoading(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
-      setError(errorMessage);
-      throw err;
-    }
-  };
-
-  const put = async <T,>(endpoint: string, data: any): Promise<T> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+  const put = useCallback(
+    async <T,>(endpoint: string, data?: unknown, params?: QueryParams): Promise<T> => {
+      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
         method: "PUT",
-        headers: getHeaders(),
-        body: JSON.stringify(data),
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: data !== undefined ? JSON.stringify(data) : undefined,
       });
+      return handleResponse(response) as Promise<T>;
+    },
+    [apiUrl, authHeaders, handleResponse],
+  );
 
-      return handleResponse(response);
-    } catch (err) {
-      setIsLoading(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
-      setError(errorMessage);
-      throw err;
-    }
-  };
-
-  const deleteRequest = async <T,>(endpoint: string): Promise<T> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${apiUrl}${endpoint}`, {
+  const del = useCallback(
+    async <T,>(endpoint: string, params?: QueryParams): Promise<T> => {
+      const response = await fetch(`${apiUrl}${endpoint}${buildQuery(params)}`, {
         method: "DELETE",
-        headers: getHeaders(),
+        headers: authHeaders(),
       });
+      return handleResponse(response) as Promise<T>;
+    },
+    [apiUrl, authHeaders, handleResponse],
+  );
 
-      return handleResponse(response);
-    } catch (err) {
-      setIsLoading(false);
-      const errorMessage =
-        err instanceof Error ? err.message : "Unknown error occurred";
-      setError(errorMessage);
-      throw err;
-    }
-  };
-
-  const value = {
+  const value: ApiContextType = {
     apiUrl,
-    token,
-    isLoading,
-    error,
+    token: hydrated ? token : null,
     setToken,
     get,
     post,
+    postForm,
     put,
-    delete: deleteRequest,
+    del,
   };
 
   return <ApiContext.Provider value={value}>{children}</ApiContext.Provider>;
@@ -187,10 +191,8 @@ export function ApiProvider({ children }: ApiProviderProps) {
 
 export function useApi() {
   const context = useContext(ApiContext);
-
   if (context === undefined) {
     throw new Error("useApi must be used within an ApiProvider");
   }
-
   return context;
 }

@@ -190,7 +190,7 @@
     - hardening
 
 - name: Configure UFW firewall
-  ansible.builtin.ufw:
+  community.general.ufw:
     state: enabled
     policy: deny
     direction: incoming
@@ -200,7 +200,7 @@
     - firewall
 
 - name: Allow SSH through firewall
-  ansible.builtin.ufw:
+  community.general.ufw:
     rule: allow
     name: OpenSSH
   become: true

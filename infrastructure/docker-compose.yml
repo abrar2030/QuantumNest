@@ -139,7 +139,7 @@ services:
       - GF_AUTH_BASIC_ENABLED=true
       - GF_SERVER_PROTOCOL=http
       - GF_SERVER_DOMAIN=localhost
-      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SERVER_ROOT_URL=http://localhost:${GRAFANA_PORT:-3030}
       - GF_LOG_MODE=console
       - GF_LOG_LEVEL=info
       - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
@@ -151,7 +151,7 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "${GRAFANA_PORT:-3030}:3000"
     networks:
       - quantumnest-monitoring
     depends_on:
@@ -213,9 +213,11 @@ services:
     healthcheck:
       <<: *healthcheck-defaults
       start_period: 60s
-      test: >
-        CMD-SHELL curl -sf -u elastic:$$ELASTIC_PASSWORD
-        http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=10s || exit 1
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf -u elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=10s || exit 1",
+        ]
     logging: *default-logging
     security_opt:
       - no-new-privileges:true
@@ -317,6 +319,8 @@ services:
       <<: *healthcheck-defaults
       test: ["CMD", "vault", "status"]
     logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
     profiles:
       - vault
 

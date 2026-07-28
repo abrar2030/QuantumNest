@@ -13,7 +13,10 @@ variable "deletion_protection"  { default = false }
 variable "skip_final_snapshot"  { default = true }
 variable "final_snapshot_identifier" { default = null }
 variable "monitoring_role_arn"  { default = null }
-variable "tags"                 { type = map(string); default = {} }
+variable "tags"                 {
+  type = map(string)
+  default = {}
+}
 
 resource "aws_db_subnet_group" "main" {
   name       = "${var.db_name}-${var.environment}-subnet-group"

@@ -45,9 +45,9 @@ spec:
         security.quantumnest.com/data-classification: confidential
         network-policy: quantumnest-backend
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
+        # prometheus-client is a declared dependency but no /metrics route is
+        # implemented yet, so scraping is disabled until that's added.
+        prometheus.io/scrape: "false"
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "quantumnest-backend"
         vault.hashicorp.com/agent-inject-secret-database: "secret/data/database/prod/quantumnest"
@@ -116,16 +116,7 @@ spec:
               type: RuntimeDefault
           ports:
             - name: http
-              containerPort: 8080
-              protocol: TCP
-            - name: https
-              containerPort: 8443
-              protocol: TCP
-            - name: metrics
-              containerPort: 9090
-              protocol: TCP
-            - name: health
-              containerPort: 8081
+              containerPort: 8000
               protocol: TCP
           env:
             - name: ENVIRONMENT
@@ -142,12 +133,6 @@ spec:
               value: "https://vault.quantumnest.internal:8200"
             - name: VAULT_NAMESPACE
               value: "quantumnest"
-            - name: TLS_CERT_PATH
-              value: "/etc/tls/tls.crt"
-            - name: TLS_KEY_PATH
-              value: "/etc/tls/tls.key"
-            - name: CA_CERT_PATH
-              value: "/etc/tls/ca.crt"
             - name: ENCRYPTION_KEY_PATH
               value: "/vault/secrets/encryption-key"
             - name: JWT_SECRET_PATH
@@ -167,9 +152,6 @@ spec:
               cpu: "1000m"
               ephemeral-storage: "2Gi"
           volumeMounts:
-            - name: tls-certs
-              mountPath: /etc/tls
-              readOnly: true
             - name: vault-secrets
               mountPath: /vault/secrets
               readOnly: true
@@ -181,8 +163,8 @@ spec:
               mountPath: /var/log
           livenessProbe:
             httpGet:
-              path: /health/live
-              port: health
+              path: /health
+              port: http
               scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 10
@@ -191,8 +173,8 @@ spec:
             successThreshold: 1
           readinessProbe:
             httpGet:
-              path: /health/ready
-              port: health
+              path: /health
+              port: http
               scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 5
@@ -201,8 +183,8 @@ spec:
             successThreshold: 1
           startupProbe:
             httpGet:
-              path: /health/startup
-              port: health
+              path: /health
+              port: http
               scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 5
@@ -231,10 +213,6 @@ spec:
               memory: "256Mi"
               cpu: "200m"
       volumes:
-        - name: tls-certs
-          secret:
-            secretName: quantumnest-backend-tls
-            defaultMode: 0400
         - name: vault-secrets
           emptyDir:
             medium: Memory
@@ -257,80 +235,6 @@ spec:
       nodeSelector:
         node-type: application
         security-zone: restricted
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: quantumnest-backend-service
-  namespace: quantumnest-prod
-  labels:
-    app: quantumnest-backend
-    tier: backend
-    app.kubernetes.io/name: quantumnest-backend
-    app.kubernetes.io/component: backend
-    app.kubernetes.io/part-of: quantumnest-platform
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: nlb
-    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:us-west-2:123456789012:certificate/12345678-1234-1234-1234-123456789012
-    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "https"
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "9090"
-    prometheus.io/path: "/metrics"
-spec:
-  type: ClusterIP
-  selector:
-    app: quantumnest-backend
-    tier: backend
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
-      protocol: TCP
-    - name: https
-      port: 443
-      targetPort: 8443
-      protocol: TCP
-    - name: metrics
-      port: 9090
-      targetPort: 9090
-      protocol: TCP
-  sessionAffinity: None
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: quantumnest-backend-config
-  namespace: quantumnest-prod
-  labels:
-    app: quantumnest-backend
-    app.kubernetes.io/name: quantumnest-backend
-    app.kubernetes.io/component: backend
-data:
-  APP_NAME: "QuantumNest Backend"
-  APP_VERSION: "1.0.0"
-  ENVIRONMENT: "production"
-  LOG_FORMAT: "json"
-  LOG_LEVEL: "INFO"
-  METRICS_PORT: "9090"
-  HEALTH_PORT: "8081"
-  CORS_ENABLED: "true"
-  CORS_ORIGINS: "https://app.quantumnest.com,https://admin.quantumnest.com"
-  RATE_LIMIT_ENABLED: "true"
-  RATE_LIMIT_REQUESTS_PER_MINUTE: "1000"
-  SESSION_TIMEOUT_MINUTES: "30"
-  JWT_EXPIRY_HOURS: "24"
-  ENCRYPTION_ALGORITHM: "AES-256-GCM"
-  DATABASE_POOL_SIZE: "20"
-  DATABASE_MAX_CONNECTIONS: "100"
-  DATABASE_CONNECTION_TIMEOUT: "30"
-  REDIS_POOL_SIZE: "10"
-  REDIS_CONNECTION_TIMEOUT: "5"
-  AUDIT_LOGGING_ENABLED: "true"
-  COMPLIANCE_MODE: "strict"
-  PCI_DSS_ENABLED: "true"
-  SOX_COMPLIANCE: "true"
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

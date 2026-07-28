@@ -321,7 +321,11 @@ def get_portfolio_summary(
     return {
         "portfolio_id": portfolio_id,
         "name": db_portfolio.name,
-        "risk_level": str(db_portfolio.risk_level),
+        "risk_level": (
+            db_portfolio.risk_level.value
+            if hasattr(db_portfolio.risk_level, "value")
+            else db_portfolio.risk_level
+        ),
         "base_currency": db_portfolio.base_currency,
         "total_assets": len(assets),
         "total_value": float(db_portfolio.total_value or 0),

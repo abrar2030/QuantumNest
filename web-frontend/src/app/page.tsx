@@ -1,216 +1,254 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { useApi } from "@/lib/api";
-import { useBlockchain } from "@/lib/blockchain";
+import Link from "next/link";
+import {
+  ArrowRight,
+  BarChart3,
+  Blocks,
+  Brain,
+  Gauge,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { PublicShell } from "@/components/layout/public-shell";
+import { useAuth } from "@/lib/auth-context";
 
-export default function Home() {
-  const { get, isLoading: apiLoading } = useApi();
-  const {
-    connectWallet,
-    isConnected,
-    account,
-    isConnecting,
-    error: walletError,
-  } = useBlockchain();
-  const [apiStatus, setApiStatus] = useState<"loading" | "connected" | "error">(
-    "loading",
-  );
-  const [apiError, setApiError] = useState<string | null>(null);
+const platformFeatures = [
+  {
+    icon: Wallet,
+    title: "Unified portfolios",
+    description:
+      "Track equities, crypto, and tokenized real-world assets side by side with live valuations.",
+  },
+  {
+    icon: BarChart3,
+    title: "Institutional analytics",
+    description:
+      "Sharpe ratio, alpha, beta, drawdown, and volatility computed continuously in the background.",
+  },
+  {
+    icon: Blocks,
+    title: "On-chain settlement",
+    description:
+      "Tokenized assets and smart contracts give every holding a verifiable, transparent record.",
+  },
+];
 
-  useEffect(() => {
-    const checkApiConnection = async () => {
-      try {
-        await get("/health");
-        setApiStatus("connected");
-      } catch (_error) {
-        setApiStatus("error");
-        setApiError(
-          "Could not connect to backend API. Please ensure the backend server is running.",
-        );
-      }
-    };
+const intelligenceFeatures = [
+  {
+    icon: Brain,
+    title: "Transformer forecasting",
+    description:
+      "Multi-transformer volatility and price models trained on years of market microstructure data.",
+  },
+  {
+    icon: Sparkles,
+    title: "Portfolio optimization",
+    description:
+      "AI-generated rebalancing and diversification recommendations tailored to your risk profile.",
+  },
+  {
+    icon: Gauge,
+    title: "Sentiment & risk scoring",
+    description:
+      "Real-time news and social sentiment fused with quantitative risk metrics for every asset.",
+  },
+];
 
-    checkApiConnection();
-  }, [get]);
+const securityFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Bank-grade authentication",
+    description:
+      "JWT-based session security with granular role and tier permissions.",
+  },
+  {
+    icon: Lock,
+    title: "Encrypted by default",
+    description:
+      "Sensitive data is encrypted in transit and at rest across the platform.",
+  },
+  {
+    icon: Zap,
+    title: "Real-time monitoring",
+    description:
+      "System health, anomaly detection, and audit logs available to administrators.",
+  },
+];
+
+const stats = [
+  { label: "Assets tracked", value: "12K+" },
+  { label: "AI models in production", value: "8" },
+  { label: "Avg. API response", value: "<120ms" },
+  { label: "Supported networks", value: "5" },
+];
+
+export default function HomePage() {
+  const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Welcome to QuantumNest Capital
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-            A futuristic fintech platform integrating AI, Blockchain, Data
-            Science, and Automation.
-          </p>
-
-          {!isConnected ? (
-            <Button
-              size="lg"
-              onClick={connectWallet}
-              isLoading={isConnecting}
-              className="mb-8"
-            >
-              Connect Wallet to Get Started
-            </Button>
-          ) : (
-            <div className="mb-8">
-              <p className="text-green-600 dark:text-green-400 font-medium mb-2">
-                Wallet Connected: {account?.substring(0, 6)}...
-                {account?.substring(account.length - 4)}
-              </p>
-              <Button
-                size="lg"
-                onClick={() => (window.location.href = "/dashboard")}
-              >
-                Go to Dashboard
+    <PublicShell>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="grid-backdrop absolute inset-0" />
+        <div className="absolute inset-0 bg-hero-glow" />
+        <div className="container relative py-24 sm:py-32">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              AI-native investment infrastructure
+            </div>
+            <h1 className="font-display text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+              Invest smarter with{" "}
+              <span className="text-gradient">AI and tokenized assets</span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-xl text-balance text-base text-muted-foreground sm:text-lg">
+              QuantumNest fuses transformer-based market intelligence with
+              blockchain-secured portfolios, giving you an institutional edge in
+              a single platform.
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Button size="lg" asChild>
+                <Link href={isAuthenticated ? "/dashboard" : "/auth/register"}>
+                  {isAuthenticated ? "Go to dashboard" : "Get started free"}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link href="/market-analysis">Explore live markets</Link>
               </Button>
             </div>
-          )}
-
-          {walletError && (
-            <div className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 p-4 rounded-md mb-8">
-              {walletError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-12">
-            <Card>
-              <CardHeader>
-                <CardTitle>Backend API Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {apiStatus === "loading" && (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                    <span className="ml-2">Checking connection...</span>
-                  </div>
-                )}
-                {apiStatus === "connected" && (
-                  <div className="text-green-600 dark:text-green-400 font-medium">
-                    Connected to Backend API
-                  </div>
-                )}
-                {apiStatus === "error" && (
-                  <div className="text-red-600 dark:text-red-400 font-medium">
-                    {apiError}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Blockchain Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isConnected ? (
-                  <div className="text-green-600 dark:text-green-400 font-medium">
-                    Connected to Ethereum Network
-                  </div>
-                ) : (
-                  <div className="text-yellow-600 dark:text-yellow-400 font-medium">
-                    Not connected to blockchain. Please connect your wallet.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-            <Card>
-              <CardContent className="p-6 flex flex-col items-center">
-                <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  AI-Powered Analysis
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-center">
-                  LSTM models for financial prediction, GARCH models for
-                  volatility forecasting, sentiment analysis, and portfolio
-                  optimization.
+          <div className="mx-auto mt-20 grid max-w-4xl grid-cols-2 gap-6 sm:grid-cols-4">
+            {stats.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <p className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
+                  {stat.value}
                 </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 flex flex-col items-center">
-                <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Blockchain Integration
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-center">
-                  Asset tokenization, secure trading, portfolio management, and
-                  DeFi yield strategies.
+                <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+                  {stat.label}
                 </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 flex flex-col items-center">
-                <div className="h-12 w-12 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Data Science
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-center">
-                  Advanced data visualization, market analysis, and predictive
-                  analytics for informed investment decisions.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+            ))}
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* Platform */}
+      <section id="platform" className="border-t border-border/60 py-24">
+        <div className="container">
+          <SectionHeading
+            eyebrow="Platform"
+            title="One place for every asset you hold"
+            description="From equities to tokenized real-world assets, manage everything with the same institutional-grade tooling."
+          />
+          <FeatureGrid features={platformFeatures} />
+        </div>
+      </section>
+
+      {/* Intelligence */}
+      <section
+        id="intelligence"
+        className="border-t border-border/60 bg-surface/40 py-24"
+      >
+        <div className="container">
+          <SectionHeading
+            eyebrow="Intelligence"
+            title="AI that works while you sleep"
+            description="QuantumNest's models continuously analyze markets, sentiment, and your portfolio to surface the next best move."
+          />
+          <FeatureGrid features={intelligenceFeatures} />
+        </div>
+      </section>
+
+      {/* Security */}
+      <section id="security" className="border-t border-border/60 py-24">
+        <div className="container">
+          <SectionHeading
+            eyebrow="Security"
+            title="Built for trust, from day one"
+            description="Every layer of QuantumNest is designed around transparency, verifiability, and control."
+          />
+          <FeatureGrid features={securityFeatures} />
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="border-t border-border/60 py-24">
+        <div className="container">
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-accent/5">
+            <CardContent className="flex flex-col items-center gap-6 p-10 text-center sm:p-16">
+              <h2 className="font-display text-3xl font-semibold text-balance sm:text-4xl">
+                Ready to put AI to work on your portfolio?
+              </h2>
+              <p className="max-w-lg text-balance text-muted-foreground">
+                Create your free account and get a personalized risk profile, AI
+                recommendations, and live market analytics in minutes.
+              </p>
+              <Button size="lg" asChild>
+                <Link href={isAuthenticated ? "/dashboard" : "/auth/register"}>
+                  {isAuthenticated ? "Go to dashboard" : "Create your account"}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    </PublicShell>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="mx-auto max-w-2xl text-center">
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+        {eyebrow}
+      </p>
+      <h2 className="mt-3 font-display text-3xl font-semibold text-balance">
+        {title}
+      </h2>
+      <p className="mt-3 text-muted-foreground text-balance">{description}</p>
+    </div>
+  );
+}
+
+function FeatureGrid({
+  features,
+}: {
+  features: Array<{ icon: typeof Brain; title: string; description: string }>;
+}) {
+  return (
+    <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {features.map((feature) => (
+        <Card key={feature.title} className="card-hover">
+          <CardContent className="p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <feature.icon className="h-5 w-5" />
+            </div>
+            <h3 className="mt-4 font-display text-base font-semibold">
+              {feature.title}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {feature.description}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
