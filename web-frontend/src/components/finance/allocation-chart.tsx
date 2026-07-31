@@ -1,7 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { formatPercentage } from "@/lib/utils";
+import { formatCurrency, formatPercentage } from "@/lib/utils";
 
 const PALETTE = [
   "hsl(var(--chart-1))",
@@ -17,6 +17,10 @@ interface Slice {
   value: number;
 }
 
+function shareOf(value: number, total: number): number {
+  return total > 0 ? (value / total) * 100 : 0;
+}
+
 export function AllocationChart({
   data,
   height = 240,
@@ -24,6 +28,8 @@ export function AllocationChart({
   data: Slice[];
   height?: number;
 }) {
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -51,7 +57,7 @@ export function AllocationChart({
             fontSize: 12,
           }}
           formatter={(value: number, name: string) => [
-            formatPercentage(value),
+            `${formatCurrency(value)} (${formatPercentage(shareOf(value, total))})`,
             name,
           ]}
         />
@@ -61,6 +67,8 @@ export function AllocationChart({
 }
 
 export function AllocationLegend({ data }: { data: Slice[] }) {
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
   return (
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {data.map((entry, index) => (
@@ -71,7 +79,7 @@ export function AllocationLegend({ data }: { data: Slice[] }) {
           />
           <span className="truncate text-foreground">{entry.name}</span>
           <span className="ml-auto shrink-0 text-muted-foreground">
-            {formatPercentage(entry.value)}
+            {formatPercentage(shareOf(entry.value, total))}
           </span>
         </li>
       ))}

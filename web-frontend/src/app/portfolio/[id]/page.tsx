@@ -273,18 +273,20 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: number }) {
         />
         <StatCard
           label="Sharpe ratio"
-          value={performance ? performance.sharpe_ratio.toFixed(2) : "—"}
+          value={performance ? performance.sharpe_ratio.toFixed(2) : "N/A"}
           isLoading={isPerfLoading}
           icon={BarChart3}
         />
         <StatCard
           label="Volatility"
-          value={performance ? `${performance.volatility.toFixed(1)}%` : "—"}
+          value={performance ? `${performance.volatility.toFixed(1)}%` : "N/A"}
           isLoading={isPerfLoading}
         />
         <StatCard
           label="Max drawdown"
-          value={performance ? `${performance.max_drawdown.toFixed(1)}%` : "—"}
+          value={
+            performance ? `${performance.max_drawdown.toFixed(1)}%` : "N/A"
+          }
           isLoading={isPerfLoading}
         />
       </div>
@@ -426,7 +428,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: number }) {
                             ? formatCurrency(holding.current_price)
                             : asset?.current_price != null
                               ? formatCurrency(asset.current_price)
-                              : "—"}
+                              : "N/A"}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(value)}

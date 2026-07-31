@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Newspaper, Search, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -249,7 +249,7 @@ function AssetDetailSheet({
                 <p className="mt-1 font-display text-lg font-semibold">
                   {asset.current_price != null
                     ? formatCurrency(asset.current_price)
-                    : "—"}
+                    : "N/A"}
                 </p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3">
@@ -261,13 +261,13 @@ function AssetDetailSheet({
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground">Exchange</p>
                 <p className="mt-1 text-sm font-medium">
-                  {asset.exchange || "—"}
+                  {asset.exchange || "N/A"}
                 </p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-xs text-muted-foreground">Sector</p>
                 <p className="mt-1 text-sm font-medium">
-                  {asset.sector || "—"}
+                  {asset.sector || "N/A"}
                 </p>
               </div>
             </div>
@@ -330,12 +330,14 @@ function AssetsTab() {
     }
   }
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      load();
+      return;
+    }
     const timeout = setTimeout(() => load(search), 350);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,12 +407,12 @@ function AssetsTab() {
                         {asset.asset_type}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {asset.sector || "—"}
+                        {asset.sector || "N/A"}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {asset.current_price != null
                           ? formatCurrency(asset.current_price)
-                          : "—"}
+                          : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}

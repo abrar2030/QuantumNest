@@ -16,7 +16,6 @@ interface Settings {
     dataSharing: boolean;
     analytics: boolean;
   };
-  password?: string;
 }
 
 /**
@@ -98,11 +97,6 @@ export async function validateSettings(settings: Settings): Promise<boolean> {
       settings.language &&
       !["en", "es", "fr", "de", "zh", "ja"].includes(settings.language)
     ) {
-      return false;
-    }
-
-    // Validate password if provided
-    if (settings.password && settings.password.length < 8) {
       return false;
     }
 

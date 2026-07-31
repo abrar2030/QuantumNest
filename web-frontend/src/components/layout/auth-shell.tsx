@@ -14,7 +14,7 @@ const highlights = [
     icon: TrendingUp,
     title: "Institutional-grade analytics",
     description:
-      "Risk, drawdown, Sharpe, and factor exposure — the same tooling hedge funds rely on.",
+      "Risk, drawdown, Sharpe, and factor exposure: the same tooling hedge funds rely on.",
   },
   {
     icon: ShieldCheck,

@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type React from "react";
 import { ApiProvider, useApi } from "../api";
 
@@ -33,7 +33,9 @@ describe("API Context", () => {
   it("persists the token to localStorage", async () => {
     const { result } = renderHook(() => useApi(), { wrapper });
 
-    result.current.setToken("test-token");
+    act(() => {
+      result.current.setToken("test-token");
+    });
 
     await waitFor(() => {
       expect(window.localStorage.getItem("quantumnest_auth_token")).toBe(
@@ -51,7 +53,10 @@ describe("API Context", () => {
     });
 
     const { result } = renderHook(() => useApi(), { wrapper });
-    result.current.setToken("abc123");
+
+    act(() => {
+      result.current.setToken("abc123");
+    });
 
     await waitFor(async () => {
       const data = await result.current.get("/users/me");

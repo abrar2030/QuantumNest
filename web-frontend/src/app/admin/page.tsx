@@ -310,7 +310,7 @@ function UserRow({
         {user.tier}
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
-        {user.created_at ? formatDateWithTime(user.created_at) : "—"}
+        {user.created_at ? formatDateWithTime(user.created_at) : "N/A"}
       </TableCell>
       <TableCell>
         <Switch

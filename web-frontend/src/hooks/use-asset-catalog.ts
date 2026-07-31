@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useApi } from "@/lib/api";
 import type { Asset } from "@/lib/types";
 
@@ -27,8 +27,14 @@ export function useAssetCatalog() {
     load();
   }, [load]);
 
-  const byId = new Map(assets.map((asset) => [asset.id, asset]));
-  const bySymbol = new Map(assets.map((asset) => [asset.symbol, asset]));
+  const byId = useMemo(
+    () => new Map(assets.map((asset) => [asset.id, asset])),
+    [assets],
+  );
+  const bySymbol = useMemo(
+    () => new Map(assets.map((asset) => [asset.symbol, asset])),
+    [assets],
+  );
 
   return { assets, byId, bySymbol, isLoading, error, reload: load };
 }

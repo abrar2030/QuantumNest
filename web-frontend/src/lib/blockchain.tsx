@@ -124,7 +124,7 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
         setChainId(network.chainId);
         setIsConnected(true);
       } catch {
-        // No existing session — this is expected on first visit.
+        // No existing session: this is expected on first visit.
       }
     }
 

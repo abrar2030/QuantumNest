@@ -192,7 +192,7 @@ function PortfolioListContent() {
                   </div>
                   <div>
                     <p className="font-display text-2xl font-semibold">
-                      {summary ? formatCurrency(summary.total_value) : "—"}
+                      {summary ? formatCurrency(summary.total_value) : "N/A"}
                     </p>
                     <div className="mt-1 flex items-center gap-2">
                       {summary && <ChangeBadge value={returnPct} />}
