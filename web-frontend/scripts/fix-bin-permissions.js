@@ -1,20 +1,5 @@
 #!/usr/bin/env node
-/**
- * Restores the executable bit on everything in node_modules/.bin.
- *
- * Why this exists: on WSL, when a project lives on a Windows-mounted drive
- * (e.g. /mnt/c/Users/.../OneDrive/Desktop/...), the DrvFs filesystem and/or
- * OneDrive's sync process can silently strip the Unix executable permission
- * from files after `npm install`. The symlinks in node_modules/.bin still
- * point at the right files, but the target scripts (like next/dist/bin/next)
- * end up non-executable, which surfaces as:
- *
- *   sh: 1: next: Permission denied
- *
- * This is a no-op on Windows (no POSIX permission bits to fix) and a no-op
- * on a native Linux/macOS filesystem (bits are already correct), so it is
- * safe to run unconditionally on every install.
- */
+
 const fs = require("fs");
 const path = require("path");
 
