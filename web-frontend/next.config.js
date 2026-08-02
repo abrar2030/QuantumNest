@@ -4,6 +4,8 @@ const nextConfig = {
   output: "standalone",
   // FIXED: Removed deprecated `swcMinify` option (enabled by default in Next.js 14,
   // setting it explicitly causes a build warning).
+  // Hides the floating "N" dev tools badge that Next.js overlays in development.
+  devIndicators: false,
   webpack: (config) => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     return config;

@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 import jwt
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.core.time_utils import utc_now
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -119,15 +120,15 @@ class SecurityManager:
         """Create JWT access token with enhanced security"""
         to_encode = data.copy()
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = utc_now() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(
+            expire = utc_now() + timedelta(
                 minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES
             )
         to_encode.update(
             {
                 "exp": expire,
-                "iat": datetime.utcnow(),
+                "iat": utc_now(),
                 "iss": "quantumnest-api",
                 "aud": "quantumnest-client",
                 "jti": secrets.token_urlsafe(16),
@@ -143,9 +144,9 @@ class SecurityManager:
         data = {
             "sub": user_id,
             "type": "refresh",
-            "exp": datetime.utcnow()
+            "exp": utc_now()
             + timedelta(minutes=self.settings.REFRESH_TOKEN_EXPIRE_MINUTES),
-            "iat": datetime.utcnow(),
+            "iat": utc_now(),
             "jti": secrets.token_urlsafe(16),
         }
         return jwt.encode(
@@ -181,7 +182,7 @@ class SecurityManager:
         if not self.settings.RATE_LIMIT_ENABLED:
             return True
         max_requests = max_requests or self.settings.RATE_LIMIT_REQUESTS_PER_MINUTE
-        now = datetime.utcnow()
+        now = utc_now()
         window_start = now - timedelta(minutes=window_minutes)
         if identifier not in self._failed_attempts:
             self._failed_attempts[identifier] = []
@@ -197,7 +198,7 @@ class SecurityManager:
 
     def record_failed_login(self, email: str, ip_address: str) -> bool:
         """Record failed login attempt and check if account should be locked"""
-        now = datetime.utcnow()
+        now = utc_now()
         lockout_window = now - timedelta(minutes=self.settings.LOCKOUT_DURATION_MINUTES)
         if email not in self._failed_attempts:
             self._failed_attempts[email] = []
@@ -221,7 +222,7 @@ class SecurityManager:
         """Check if account is currently locked"""
         if email not in self._failed_attempts:
             return False
-        now = datetime.utcnow()
+        now = utc_now()
         lockout_window = now - timedelta(minutes=self.settings.LOCKOUT_DURATION_MINUTES)
         self._failed_attempts[email] = [
             attempt
@@ -247,7 +248,7 @@ class SecurityManager:
         """Check if IP address is blocked"""
         if ip_address in self._blocked_ips:
             block_time = self._blocked_ips[ip_address]
-            if datetime.utcnow() - block_time < timedelta(hours=1):
+            if utc_now() - block_time < timedelta(hours=1):
                 return True
             else:
                 del self._blocked_ips[ip_address]
@@ -255,7 +256,7 @@ class SecurityManager:
 
     def block_ip(self, ip_address: str, reason: str) -> Any:
         """Block an IP address"""
-        self._blocked_ips[ip_address] = datetime.utcnow()
+        self._blocked_ips[ip_address] = utc_now()
         self.logger.warning("IP address blocked", ip_address=ip_address, reason=reason)
 
     def generate_api_key(self, user_id: str, name: str) -> str:
@@ -430,7 +431,7 @@ async def get_current_user(
         if username is None:
             raise credentials_exception
     except _JWTError:
-        raise credentials_exception
+        raise credentials_exception from None
     user = db.query(_User).filter(_User.email == username).first()
     if user is None:
         raise credentials_exception

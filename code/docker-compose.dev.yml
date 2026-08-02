@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  Development overrides  –  use with:
+#  Development overrides – live reload for backend + both frontends. Use with:
 #    docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 # ─────────────────────────────────────────────────────────────────────────────
 version: "3.9"
@@ -30,3 +30,29 @@ services:
   redis:
     ports:
       - "6379:6379"
+
+  web-frontend:
+    build:
+      target: deps # stop before the production build so we can run `next dev`
+    command: npm run dev -- -p 3000
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    volumes:
+      - ./web-frontend:/app # live-reload: mount source over the image copy
+      - /app/node_modules # keep the container's node_modules (don't shadow with host)
+      - /app/.next
+    ports:
+      - "3000:3000"
+
+  mobile-frontend:
+    build:
+      target: deps
+    command: npm run dev -- -p 3000
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    volumes:
+      - ./mobile-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3001:3000"

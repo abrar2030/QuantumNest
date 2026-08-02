@@ -16,7 +16,7 @@ export function ChangeBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-data text-xs font-semibold",
         isPositive && "bg-success/10 text-success",
         isNegative && "bg-destructive/10 text-destructive",
         !isPositive && !isNegative && "bg-muted text-muted-foreground",

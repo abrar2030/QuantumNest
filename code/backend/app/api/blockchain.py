@@ -1,6 +1,6 @@
-from datetime import datetime
 from typing import Any, List, Optional
 
+from app.core.time_utils import utc_now
 from app.db.database import get_db
 from app.main import get_current_active_user
 from app.models import models
@@ -134,7 +134,7 @@ def get_wallet_balance(
             "USDT": {"balance": 2500.0, "value_usd": 2500.0},
         },
         "total_value_usd": 11481.60,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
     }
 
 
@@ -160,7 +160,7 @@ def deploy_smart_contract(
         "transaction_hash": "0x7d2a5b3e8f4a1b9c6d8e7f0a2b3c4d5e6f7a8b9c",
         "block_number": 19250050,
         "gas_used": 1250000,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "network": contract_data.get("network", "Ethereum Testnet"),
     }
 
@@ -190,7 +190,7 @@ def execute_smart_contract(
         "transaction_hash": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
         "block_number": 19250055,
         "gas_used": 75000,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "result": "Function executed successfully",
     }
 

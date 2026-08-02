@@ -359,7 +359,9 @@ class PortfolioOptimizer:
         self.optimization_result = {
             "weights": {
                 asset: weight
-                for asset, weight in zip(self.assets, self.optimal_weights)
+                for asset, weight in zip(
+                    self.assets, self.optimal_weights, strict=False
+                )
             },
             "performance": performance,
             "optimization_details": result,
@@ -413,7 +415,7 @@ class PortfolioOptimizer:
         min_vol_idx = efficient_frontier["volatility"].idxmin()
         for i, asset in enumerate(self.assets):
             efficient_frontier[f"weight_{asset}"] = efficient_frontier["weights"].apply(
-                lambda x: x[i]
+                lambda x, i=i: x[i]
             )
         efficient_frontier["is_max_sharpe"] = False
         efficient_frontier.loc[max_sharpe_idx, "is_max_sharpe"] = True

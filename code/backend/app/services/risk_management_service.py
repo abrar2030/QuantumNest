@@ -2,10 +2,10 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from app.core.time_utils import utc_now
 from app.models.models import (
     Asset,
     AssetType,
@@ -22,14 +22,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-class RiskLevel(str, Enum):
-    VERY_LOW = "very_low"
-    LOW = "low"
-    MODERATE = "moderate"
-    HIGH = "high"
-    VERY_HIGH = "very_high"
 
 
 @dataclass
@@ -119,7 +111,7 @@ class RiskManagementService:
                     correlation_matrix=None,
                     concentration_risk={},
                     liquidity_risk=0.0,
-                    calculated_at=datetime.utcnow(),
+                    calculated_at=utc_now(),
                 )
             total_value = Decimal("0")
             position_data = []
@@ -168,7 +160,7 @@ class RiskManagementService:
                 correlation_matrix=correlation_matrix,
                 concentration_risk=concentration_risk,
                 liquidity_risk=liquidity_risk,
-                calculated_at=datetime.utcnow(),
+                calculated_at=utc_now(),
             )
         except Exception as e:
             self.logger.error(
@@ -688,7 +680,7 @@ class RiskManagementService:
                     score += 10
                 else:
                     score += 5
-        for risk_type, concentration in risk_metrics.concentration_risk.items():
+        for _risk_type, concentration in risk_metrics.concentration_risk.items():
             if concentration > 0.2:
                 score += min(concentration * 50, 15)
         return min(score, 100)

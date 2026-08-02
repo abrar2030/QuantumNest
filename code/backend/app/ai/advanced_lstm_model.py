@@ -619,7 +619,7 @@ class AdvancedLSTMModel:
             param_combinations = list(product(*param_grid.values()))
             for i, params in enumerate(param_combinations):
                 logger.info(f"Testing combination {i + 1}/{len(param_combinations)}")
-                param_dict = dict(zip(param_grid.keys(), params))
+                param_dict = dict(zip(param_grid.keys(), params, strict=False))
                 original_config = self.config.copy()
                 self.config.update(param_dict)
                 result = self.train(data)

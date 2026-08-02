@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -11,6 +11,7 @@ from app.auth.authentication import (
     SessionInfo,
     SessionStatus,
 )
+from app.core.time_utils import utc_now
 from app.models.models import LoginAttempt, UserSession
 
 
@@ -45,9 +46,9 @@ class TestAdvancedAuthenticationSystem:
                 device_fingerprint="test_device",
                 ip_address="127.0.0.1",
                 user_agent="test_agent",
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(hours=24),
+                created_at=utc_now(),
+                last_activity=utc_now(),
+                expires_at=utc_now() + timedelta(hours=24),
                 status=SessionStatus.ACTIVE,
                 risk_score=0.3,
                 location=None,
@@ -190,9 +191,9 @@ class TestAdvancedAuthenticationSystem:
                 device_fingerprint="test_device",
                 ip_address="127.0.0.1",
                 user_agent="test_agent",
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(hours=24),
+                created_at=utc_now(),
+                last_activity=utc_now(),
+                expires_at=utc_now() + timedelta(hours=24),
                 status=SessionStatus.ACTIVE,
                 risk_score=0.3,
                 location=None,
@@ -283,8 +284,8 @@ class TestAdvancedAuthenticationSystem:
             "user_id": "123",
             "session_id": "session_123",
             "type": "access",
-            "exp": datetime.utcnow() - timedelta(hours=1),
-            "iat": datetime.utcnow() - timedelta(hours=2),
+            "exp": utc_now() - timedelta(hours=1),
+            "iat": utc_now() - timedelta(hours=2),
         }
         token = jwt.encode(
             payload, auth_system.jwt_secret, algorithm=auth_system.jwt_algorithm
@@ -327,9 +328,9 @@ class TestAdvancedAuthenticationSystem:
             device_fingerprint="test_device",
             ip_address="127.0.0.1",
             user_agent="test_agent",
-            created_at=datetime.utcnow(),
-            last_activity=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(hours=24),
+            created_at=utc_now(),
+            last_activity=utc_now(),
+            expires_at=utc_now() + timedelta(hours=24),
             status=SessionStatus.ACTIVE,
             risk_score=0.3,
         )
@@ -355,9 +356,9 @@ class TestAdvancedAuthenticationSystem:
                 device_fingerprint=f"device_{i}",
                 ip_address="127.0.0.1",
                 user_agent="test_agent",
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(hours=24),
+                created_at=utc_now(),
+                last_activity=utc_now(),
+                expires_at=utc_now() + timedelta(hours=24),
                 status=SessionStatus.ACTIVE,
                 risk_score=0.3,
             )
@@ -385,9 +386,9 @@ class TestAdvancedAuthenticationSystem:
                 device_fingerprint=f"device_{i}",
                 ip_address="127.0.0.1",
                 user_agent="test_agent",
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(hours=24),
+                created_at=utc_now(),
+                last_activity=utc_now(),
+                expires_at=utc_now() + timedelta(hours=24),
                 status=SessionStatus.ACTIVE,
                 risk_score=0.3,
                 location='{"country": "US"}',
@@ -400,9 +401,9 @@ class TestAdvancedAuthenticationSystem:
             device_fingerprint="device_revoked",
             ip_address="127.0.0.1",
             user_agent="test_agent",
-            created_at=datetime.utcnow(),
-            last_activity=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(hours=24),
+            created_at=utc_now(),
+            last_activity=utc_now(),
+            expires_at=utc_now() + timedelta(hours=24),
             status=SessionStatus.REVOKED,
             risk_score=0.3,
         )
@@ -584,9 +585,9 @@ class TestSecurityFeatures:
                 device_fingerprint="known_device",
                 ip_address="127.0.0.1",
                 user_agent="test_agent",
-                created_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
-                expires_at=datetime.utcnow() + timedelta(hours=24),
+                created_at=utc_now(),
+                last_activity=utc_now(),
+                expires_at=utc_now() + timedelta(hours=24),
                 status=SessionStatus.ACTIVE,
                 risk_score=0.1,
             )
@@ -615,7 +616,7 @@ class TestSecurityFeatures:
                 ip_address="127.0.0.1",
                 success=False,
                 details="Invalid password",
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
             )
             db_session.add(attempt)
         db_session.commit()

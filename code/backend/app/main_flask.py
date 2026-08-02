@@ -1,11 +1,20 @@
+"""Legacy Flask reimplementation of the API — NOT the live application.
+
+The actual backend served in development and production is the FastAPI app
+in ``app/main.py`` (started via ``run_flask.py``, which — despite its name —
+launches ``app.main:app`` through uvicorn, not this module). This file isn't
+imported by any entry point in the project. It's kept for reference but
+receives no traffic; don't assume changes here affect the running API.
+"""
+
 import os
 import traceback
-from datetime import datetime
 from typing import Any
 
 import redis
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
+from app.core.time_utils import utc_now
 from app.db.flask_db import db
 from app.middleware.security_middleware import SecurityConfig, SecurityMiddleware
 
@@ -221,7 +230,7 @@ def create_app(config_name: Any = "development") -> Any:
         return jsonify(
             {
                 "status": "healthy",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
                 "version": "1.0.0",
             }
         )
@@ -231,7 +240,7 @@ def create_app(config_name: Any = "development") -> Any:
         """Detailed health check"""
         health_status = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "version": "1.0.0",
             "components": {},
         }

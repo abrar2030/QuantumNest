@@ -1,9 +1,10 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
+from app.core.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def predict_asset_price(
     try:
         from app.ai.lstm_model import LSTMModel
 
-        dates = pd.date_range(end=datetime.utcnow(), periods=100, freq="D")
+        dates = pd.date_range(end=utc_now(), periods=100, freq="D")
         data = pd.DataFrame(
             {
                 "date": dates,
@@ -37,16 +38,18 @@ def predict_asset_price(
             model.train(data, verbose=0)
             predictions = model.predict(data)
             prediction_dates = [
-                datetime.utcnow() + timedelta(days=i) for i in range(1, days_ahead + 1)
+                utc_now() + timedelta(days=i) for i in range(1, days_ahead + 1)
             ]
             prediction_values = predictions[-days_ahead:].flatten().tolist()
             return {
                 "asset_symbol": asset_symbol,
                 "model_type": model_type,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
                 "predictions": [
                     {"date": date.strftime("%Y-%m-%d"), "predicted_price": float(value)}
-                    for date, value in zip(prediction_dates, prediction_values)
+                    for date, value in zip(
+                        prediction_dates, prediction_values, strict=False
+                    )
                 ],
                 "confidence_interval": {
                     "lower": [float(v * 0.95) for v in prediction_values],
@@ -73,7 +76,7 @@ def optimize_portfolio(
         return {
             "portfolio_id": portfolio_id,
             "optimization_method": optimization_method,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "status": "completed",
             "optimized_weights": {
                 "AAPL": 0.25,
@@ -99,7 +102,7 @@ def analyze_sentiment(asset_symbol: str, sources: Any = None) -> Dict[str, Any]:
     try:
         return {
             "asset_symbol": asset_symbol,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "overall_sentiment": {"score": 72, "label": "bullish", "confidence": 78},
             "sources_analyzed": {
                 "news": 42,
@@ -118,7 +121,7 @@ def analyze_portfolio_risk(portfolio_id: int) -> Dict[str, Any]:
     try:
         return {
             "portfolio_id": portfolio_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "overall_risk_score": 65,
             "risk_metrics": {
                 "volatility": 12.5,
@@ -138,7 +141,7 @@ def generate_market_recommendations() -> Dict[str, Any]:
     logger.info("Generating market recommendations")
     try:
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "market_outlook": {
                 "short_term": "bullish",
                 "medium_term": "neutral",

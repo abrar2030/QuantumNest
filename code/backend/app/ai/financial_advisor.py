@@ -4,6 +4,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.core.time_utils import utc_now
+
 warnings.filterwarnings("ignore")
 import logging
 import os
@@ -296,7 +298,7 @@ class AIFinancialAdvisor:
                     profile, market_data
                 ),
                 "risk_alerts": await self._identify_risks(profile, market_data),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
             return insights
         except Exception as e:
@@ -344,7 +346,7 @@ class AIFinancialAdvisor:
                         "Track progress monthly",
                     ],
                     monitoring_metrics=["Emergency fund balance", "Months of coverage"],
-                    timestamp=datetime.utcnow(),
+                    timestamp=utc_now(),
                 )
             return None
         except Exception as e:
@@ -392,7 +394,7 @@ class AIFinancialAdvisor:
                         "Debt-to-income ratio",
                         "Credit score",
                     ],
-                    timestamp=datetime.utcnow(),
+                    timestamp=utc_now(),
                 )
             return None
         except Exception as e:
@@ -437,7 +439,7 @@ class AIFinancialAdvisor:
                         "Debt levels",
                         "Investment balance",
                     ],
-                    timestamp=datetime.utcnow(),
+                    timestamp=utc_now(),
                 )
             strategy = await self._determine_investment_strategy(profile)
             return FinancialAdvice(
@@ -452,7 +454,7 @@ class AIFinancialAdvisor:
                 supporting_data=strategy["supporting_data"],
                 implementation_steps=strategy["implementation_steps"],
                 monitoring_metrics=strategy["monitoring_metrics"],
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
             )
         except Exception as e:
             logger.error(f"Error generating investment advice: {str(e)}")
@@ -502,7 +504,7 @@ class AIFinancialAdvisor:
                         "Retirement contributions",
                         "Effective tax rate",
                     ],
-                    timestamp=datetime.utcnow(),
+                    timestamp=utc_now(),
                 )
             return None
         except Exception as e:
@@ -573,7 +575,7 @@ class AIFinancialAdvisor:
                 "Savings rate",
                 "Investment returns",
             ],
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )
 
     def _determine_allocation_strategy(self, profile: UserProfile) -> str:
@@ -1050,7 +1052,7 @@ class AIFinancialAdvisor:
                         "Premium costs",
                         "Policy terms",
                     ],
-                    timestamp=datetime.utcnow(),
+                    timestamp=utc_now(),
                 )
             return None
         except Exception as e:
@@ -1099,7 +1101,7 @@ class AIFinancialAdvisor:
                 "Investment performance",
                 "Education cost inflation",
             ],
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )
 
     async def _generate_home_purchase_advice(
@@ -1137,7 +1139,7 @@ class AIFinancialAdvisor:
                 "Connect with mortgage lender",
             ],
             monitoring_metrics=["Down payment savings", "Credit score", "Home prices"],
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )
 
     async def _generate_general_goal_advice(
@@ -1173,5 +1175,5 @@ class AIFinancialAdvisor:
                 "Investment performance",
                 "Timeline adherence",
             ],
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
         )

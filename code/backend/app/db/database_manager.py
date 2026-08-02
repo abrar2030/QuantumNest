@@ -1,11 +1,11 @@
 import threading
 import time
 from contextlib import contextmanager
-from datetime import datetime
 from typing import Any, Dict, Generator
 
 from app.core.config import get_database_url, get_settings
 from app.core.logging import get_logger
+from app.core.time_utils import utc_now
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool, StaticPool
@@ -33,7 +33,7 @@ class DatabaseManager:
             "failed_connections": 0,
             "query_count": 0,
             "slow_queries": 0,
-            "last_reset": datetime.utcnow(),
+            "last_reset": utc_now(),
         }
         self._slow_query_threshold = 1.0  # seconds
 
@@ -182,6 +182,6 @@ class DatabaseManager:
                     "failed_connections": 0,
                     "query_count": 0,
                     "slow_queries": 0,
-                    "last_reset": datetime.utcnow(),
+                    "last_reset": utc_now(),
                 }
             )

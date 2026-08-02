@@ -99,11 +99,10 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-hero-glow" />
         <div className="container relative py-24 sm:py-32">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              AI-native investment infrastructure
-            </div>
-            <h1 className="font-display text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+            <p className="font-mono text-xs font-medium uppercase tracking-[0.25em] text-primary">
+              QN // Investment Infrastructure
+            </p>
+            <h1 className="mt-5 font-display text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
               Invest smarter with{" "}
               <span className="text-gradient">AI and tokenized assets</span>
             </h1>
@@ -126,10 +125,16 @@ export default function HomePage() {
           </div>
 
           <div className="mx-auto mt-20 grid max-w-4xl grid-cols-2 gap-6 sm:grid-cols-4">
-            {stats.map((stat) => (
+            {stats.map((stat, index) => (
               <div key={stat.label} className="text-center">
-                <p className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
+                <p className="font-data text-2xl font-semibold text-foreground sm:text-3xl">
                   {stat.value}
+                  {index === 0 && (
+                    <span
+                      className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-success align-middle"
+                      aria-hidden="true"
+                    />
+                  )}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
                   {stat.label}
@@ -216,7 +221,7 @@ function SectionHeading({
 }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+      <p className="font-mono text-xs font-semibold uppercase tracking-[0.25em] text-primary">
         {eyebrow}
       </p>
       <h2 className="mt-3 font-display text-3xl font-semibold text-balance">

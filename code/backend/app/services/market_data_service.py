@@ -9,6 +9,7 @@ import aiohttp
 import pandas as pd
 import yfinance as yf
 from app.core.config import get_settings
+from app.core.time_utils import utc_now
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,7 +101,7 @@ class MarketDataService:
             if self._is_cached(cache_key, timeout=300):
                 return self._cache[cache_key]["data"]
             ticker = yf.Ticker(symbol)
-            end_date = datetime.utcnow()
+            end_date = utc_now()
             start_date = end_date - timedelta(days=days)
             hist = ticker.history(start=start_date, end=end_date, interval=interval)
             if hist.empty:
@@ -130,7 +131,7 @@ class MarketDataService:
             tasks = [self.get_market_quote(symbol) for symbol in symbols]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             quotes = {}
-            for symbol, result in zip(symbols, results):
+            for symbol, result in zip(symbols, results, strict=False):
                 if isinstance(result, MarketQuote):
                     quotes[symbol] = result
                 elif isinstance(result, Exception):
@@ -363,7 +364,7 @@ class MarketDataService:
                 change=Decimal(str(change)),
                 change_percent=Decimal(str(change_percent)),
                 volume=info.get("volume", 0),
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
                 bid=Decimal(str(info["bid"])) if info.get("bid") else None,
                 ask=Decimal(str(info["ask"])) if info.get("ask") else None,
                 bid_size=info.get("bidSize"),
@@ -402,12 +403,12 @@ class MarketDataService:
         if key not in self._cache:
             return False
         cache_timeout = timeout or self._cache_timeout
-        age = (datetime.utcnow() - self._cache[key]["timestamp"]).total_seconds()
+        age = (utc_now() - self._cache[key]["timestamp"]).total_seconds()
         return age < cache_timeout
 
     def _cache_data(self, key: str, data: Any, timeout: int = None) -> Any:
         """Cache data with timestamp"""
-        self._cache[key] = {"data": data, "timestamp": datetime.utcnow()}
+        self._cache[key] = {"data": data, "timestamp": utc_now()}
 
     def clear_cache(self) -> Any:
         """Clear all cached data"""

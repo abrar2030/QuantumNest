@@ -157,7 +157,7 @@ class AdvancedPortfolioOptimizer:
                 assets, result["weights"], returns_data
             )
             portfolio_result = PortfolioResult(
-                weights=dict(zip(assets, result["weights"])),
+                weights=dict(zip(assets, result["weights"], strict=False)),
                 expected_return=portfolio_metrics["expected_return"],
                 volatility=portfolio_metrics["volatility"],
                 sharpe_ratio=portfolio_metrics["sharpe_ratio"],
@@ -166,7 +166,7 @@ class AdvancedPortfolioOptimizer:
                 max_drawdown=portfolio_metrics["max_drawdown"],
                 optimization_status=result["status"],
                 objective_value=result["objective_value"],
-                risk_contributions=dict(zip(assets, risk_contributions)),
+                risk_contributions=dict(zip(assets, risk_contributions, strict=False)),
                 sector_allocations=sector_allocations,
                 performance_attribution=performance_attribution,
             )
@@ -438,7 +438,7 @@ class AdvancedPortfolioOptimizer:
                     cluster_vol = np.sqrt(np.diag(cluster_cov))
                     inv_vol_weights = 1 / cluster_vol / np.sum(1 / cluster_vol)
                     cluster_weights[cluster_id] = dict(
-                        zip(cluster_assets, inv_vol_weights)
+                        zip(cluster_assets, inv_vol_weights, strict=False)
                     )
             final_weights = np.zeros(len(returns_data.columns))
             cluster_sizes = [

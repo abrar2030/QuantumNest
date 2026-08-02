@@ -1,10 +1,35 @@
+"""Role-based access control (RBAC) — not wired into the live application.
+
+This module is only imported by ``app/main_flask.py``, which is itself dead
+code (see that file's docstring). The live FastAPI app (``app/main.py`` and
+``app/api/*.py``) uses a simpler flat role check instead
+(``User.role`` — a plain ``UserRole`` string column, checked directly by
+each endpoint's dependency).
+
+This module was scaffolded for a fuller RBAC system but the database schema
+it depends on was never built: it imports ``Permission``, ``Role``, and
+``RolePermission`` ORM models, plus a ``UserRole`` *join-table* model — none
+of which exist in ``app/models/models.py``. The only ``UserRole`` that
+exists there is the simple string enum used by the flat-role check above,
+not an ORM-mapped table, so the queries in this file
+(``self.db.query(Permission)``, ``self.db.query(UserRole)...``, etc.) would
+raise at runtime if this module were ever imported and exercised.
+
+To complete this module: add ``Permission``, ``Role``, and
+``RolePermission`` tables (with a migration) and a ``UserRole`` join-table
+model distinct from the existing enum, then wire this module's
+``AuthorizationService`` into the FastAPI dependencies in place of the flat
+role check.
+"""
+
 import functools
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+from app.core.time_utils import utc_now
 from app.models.models import Permission, Role, RolePermission, UserRole
 from sqlalchemy.orm import Session
 
@@ -44,15 +69,6 @@ class AccessLevel(str, Enum):
     WRITE = "write"
     ADMIN = "admin"
     OWNER = "owner"
-
-
-@dataclass
-class Permission:
-    """Permission definition"""
-
-    resource: ResourceType
-    action: Action
-    conditions: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -198,10 +214,7 @@ class RoleBasedAccessControl:
             if (
                 cache_key in self.permission_cache
                 and cache_key in self.last_cache_update
-                and (
-                    datetime.utcnow() - self.last_cache_update[cache_key]
-                    < self.cache_ttl
-                )
+                and (utc_now() - self.last_cache_update[cache_key] < self.cache_ttl)
             ):
                 return self.permission_cache[cache_key]
             user_roles = (
@@ -224,7 +237,7 @@ class RoleBasedAccessControl:
                         permissions.add(f"{permission.resource}:{permission.action}")
             permissions_list = list(permissions)
             self.permission_cache[cache_key] = permissions_list
-            self.last_cache_update[cache_key] = datetime.utcnow()
+            self.last_cache_update[cache_key] = utc_now()
             return permissions_list
         except Exception as e:
             self.logger.error(f"Error getting user permissions: {str(e)}")
@@ -325,7 +338,7 @@ class RoleBasedAccessControl:
             if not request.context:
                 return True
             if "time_restriction" in request.context:
-                current_hour = datetime.utcnow().hour
+                current_hour = utc_now().hour
                 allowed_hours = request.context["time_restriction"]
                 if current_hour not in allowed_hours:
                     return False
@@ -445,7 +458,7 @@ class RoleBasedAccessControl:
                     max_daily_limit = max(max_daily_limit, daily_limits[role])
             if amount > max_daily_limit:
                 return False
-            today = datetime.utcnow().date()
+            today = utc_now().date()
             from app.models.models import Transaction
 
             daily_total = (
@@ -645,7 +658,7 @@ class AttributeBasedAccessControl:
         """Evaluate ABAC policy"""
         try:
             if "allowed_hours" in environment_attributes:
-                current_hour = datetime.utcnow().hour
+                current_hour = utc_now().hour
                 if current_hour not in environment_attributes["allowed_hours"]:
                     return False
             if "allowed_locations" in environment_attributes:

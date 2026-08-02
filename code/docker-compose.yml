@@ -2,8 +2,22 @@ version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  QuantumNest Capital – Docker Compose
-#  Services: db · redis · backend · blockchain (optional)
+#  Services: db · redis · backend · web-frontend · mobile-frontend
+#
+#  This compose file was adapted from the original QuantumNest monorepo's
+#  code/docker-compose.yml to work with the flattened backend / web-frontend /
+#  mobile-frontend layout of this package. It adds the two frontend services
+#  (absent from the upstream file) and wires them to the backend.
 # ─────────────────────────────────────────────────────────────────────────────
+
+# NEXT_PUBLIC_* variables are inlined into each frontend's client bundle at
+# *build* time (see web-frontend/Dockerfile and mobile-frontend/Dockerfile),
+# so they must point to a URL reachable from the end user's browser, not the
+# in-network service name. With BACKEND_PORT published to the host (below),
+# http://localhost:8000 is correct for local/dev use; override for
+# staging/production deployments where the backend has a public hostname.
+x-frontend-build-args: &frontend-build-args
+  NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
 
 x-backend-env: &backend-env
   ENVIRONMENT: ${ENVIRONMENT:-development}
@@ -16,7 +30,6 @@ x-backend-env: &backend-env
   REDIS_PORT: "6379"
   REDIS_PASSWORD: ${REDIS_PASSWORD:-}
   ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
-  ETHEREUM_RPC_URL: http://blockchain:8545
   HOST: 0.0.0.0
   PORT: "8000"
   WORKERS: ${WORKERS:-2}
@@ -24,6 +37,11 @@ x-backend-env: &backend-env
   ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
   SENTRY_DSN: ${SENTRY_DSN:-}
   PROMETHEUS_ENABLED: ${PROMETHEUS_ENABLED:-false}
+  # Points at the app's own default (localhost:8545) unless overridden.
+  # The optional Hardhat blockchain node from the full QuantumNest monorepo
+  # is not part of this package — set ETHEREUM_RPC_URL if you run one
+  # separately, or leave it unset to use the built-in default.
+  ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-http://localhost:8545}
 
 services:
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
@@ -100,29 +118,49 @@ services:
       - qn_internal
       - qn_public
 
-  # ── Hardhat Blockchain Node (optional – dev/test only) ─────────────────────
-  blockchain:
+  # ── Web Frontend (Next.js) ──────────────────────────────────────────────────
+  web-frontend:
     build:
-      context: ./blockchain
+      context: ./web-frontend
       dockerfile: Dockerfile
+      args:
+        <<: *frontend-build-args
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8545:8545"
+      - "${WEB_FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
     healthcheck:
-      test: [
-          "CMD-SHELL",
-          "curl -sf -X POST -H 'Content-Type: application/json' \
-          --data '{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}' \
-          http://localhost:8545 | grep -q result",
-        ]
-      interval: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 20s
+      retries: 3
+      start_period: 15s
     networks:
-      - qn_internal
-    profiles:
-      - blockchain # only starts with: docker compose --profile blockchain up
+      - qn_public
+
+  # ── Mobile Frontend (Next.js, PWA) ──────────────────────────────────────────
+  mobile-frontend:
+    build:
+      context: ./mobile-frontend
+      dockerfile: Dockerfile
+      args:
+        <<: *frontend-build-args
+    restart: unless-stopped
+    ports:
+      - "${MOBILE_FRONTEND_PORT:-3001}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - qn_public
 
   # ── Database Migrations (one-shot job) ────────────────────────────────────
   migrate:
@@ -159,4 +197,4 @@ networks:
     driver: bridge
     internal: true # no direct internet access for internal services
   qn_public:
-    driver: bridge # only the backend is reachable from the outside
+    driver: bridge # backend + web-frontend + mobile-frontend are reachable from the outside

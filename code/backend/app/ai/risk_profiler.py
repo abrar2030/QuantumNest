@@ -183,7 +183,7 @@ class RiskProfiler:
             contributions = np.ones_like(differences)
         return {
             feature: float(contrib)
-            for feature, contrib in zip(self.feature_names, contributions)
+            for feature, contrib in zip(self.feature_names, contributions, strict=False)
         }
 
     def get_profile_recommendations(self, profile_id: Any) -> Any:

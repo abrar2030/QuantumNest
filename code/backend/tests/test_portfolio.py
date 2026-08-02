@@ -1,8 +1,7 @@
 """Portfolio API endpoint tests."""
 
-from datetime import datetime
-
 import pytest
+from app.core.time_utils import utc_now
 from app.models.models import Asset
 from fastapi.testclient import TestClient
 
@@ -76,7 +75,7 @@ def test_add_asset_to_portfolio(
         "asset_id": asset_id,
         "quantity": 1.5,
         "purchase_price": 45000.00,
-        "purchase_date": datetime.utcnow().isoformat(),
+        "purchase_date": utc_now().isoformat(),
     }
     r = client.post("/portfolio/assets/", json=payload, headers=auth_headers)
     assert r.status_code == 201, r.text
@@ -93,7 +92,7 @@ def test_read_portfolio_asset(
         "asset_id": asset_id,
         "quantity": 1.5,
         "purchase_price": 45000.00,
-        "purchase_date": datetime.utcnow().isoformat(),
+        "purchase_date": utc_now().isoformat(),
     }
     r = client.post("/portfolio/assets/", json=payload, headers=auth_headers)
     assert r.status_code == 201
@@ -113,7 +112,7 @@ def test_update_portfolio_asset(
         "asset_id": asset_id,
         "quantity": 1.5,
         "purchase_price": 45000.00,
-        "purchase_date": datetime.utcnow().isoformat(),
+        "purchase_date": utc_now().isoformat(),
     }
     r = client.post("/portfolio/assets/", json=payload, headers=auth_headers)
     assert r.status_code == 201
@@ -157,7 +156,7 @@ def test_delete_portfolio_asset(
         "asset_id": asset_id,
         "quantity": 1.5,
         "purchase_price": 45000.00,
-        "purchase_date": datetime.utcnow().isoformat(),
+        "purchase_date": utc_now().isoformat(),
     }
     r = client.post("/portfolio/assets/", json=payload, headers=auth_headers)
     assert r.status_code == 201

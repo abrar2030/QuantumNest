@@ -35,7 +35,7 @@ export function StatCard({
         {isLoading ? (
           <Skeleton className="mt-3 h-8 w-28" />
         ) : (
-          <p className="mt-2 font-display text-2xl font-semibold tracking-tight">
+          <p className="mt-2 font-data text-2xl font-semibold tracking-tight">
             {value}
           </p>
         )}

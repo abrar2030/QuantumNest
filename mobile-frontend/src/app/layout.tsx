@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/space-grotesk";
+import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -22,7 +25,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#0a0e1a",
+  themeColor: "#080a12",
 };
 
 export default function RootLayout({
@@ -32,7 +35,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      {/* suppressHydrationWarning here guards against browser extensions
+          (ad blockers, converters, password managers, etc.) injecting
+          attributes into <body> before React hydrates — that's an
+          extension-caused mismatch, not an app bug, and is safe to ignore. */}
+      <body
+        className="min-h-screen bg-background font-sans antialiased"
+        suppressHydrationWarning
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

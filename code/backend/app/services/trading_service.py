@@ -1,10 +1,10 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Dict, List, Optional
 
+from app.core.time_utils import utc_now
 from app.models.models import (
     Asset,
     Portfolio,
@@ -188,7 +188,7 @@ class TradingService:
                 amount=notional_value,
                 fees=fees,
                 status=TransactionStatus.COMPLETED,
-                executed_at=datetime.utcnow(),
+                executed_at=utc_now(),
             )
             self.db.add(transaction)
             self.db.commit()
@@ -308,14 +308,14 @@ class TradingService:
                     asset_id=asset.id,
                     quantity=quantity,
                     average_cost=price,
-                    first_purchase_date=datetime.utcnow(),
+                    first_purchase_date=utc_now(),
                 )
                 self.db.add(portfolio_asset)
         elif portfolio_asset:
             portfolio_asset.quantity -= quantity
             if portfolio_asset.quantity <= 0:
                 self.db.delete(portfolio_asset)
-        portfolio_asset.last_transaction_date = datetime.utcnow()
+        portfolio_asset.last_transaction_date = utc_now()
         self.db.commit()
 
     async def get_order_history(
@@ -410,7 +410,7 @@ class TradingService:
                 "total_return": float(total_return),
                 "total_return_pct": total_return_pct,
                 "positions": positions,
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": utc_now().isoformat(),
             }
         except Exception as e:
             self.logger.error(
@@ -493,7 +493,7 @@ class AlgorithmicTradingService:
                 "strategy": "momentum",
                 "portfolio_id": portfolio_id,
                 "results": results,
-                "executed_at": datetime.utcnow().isoformat(),
+                "executed_at": utc_now().isoformat(),
             }
         except Exception as e:
             self.logger.error(
@@ -571,7 +571,7 @@ class AlgorithmicTradingService:
                 "strategy": "mean_reversion",
                 "portfolio_id": portfolio_id,
                 "results": results,
-                "executed_at": datetime.utcnow().isoformat(),
+                "executed_at": utc_now().isoformat(),
             }
         except Exception as e:
             self.logger.error(

@@ -1,12 +1,13 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import joblib
 import numpy as np
 import pandas as pd
+from app.core.time_utils import utc_now
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
@@ -120,7 +121,7 @@ class AIRecommendationEngine:
         """
         X, y = self._preprocess_data(data)
         self.models = self._create_models()
-        for name, model in self.models.items():
+        for _name, model in self.models.items():
             model.fit(X, y)
         self._calculate_feature_importance()
         return self
@@ -140,7 +141,9 @@ class AIRecommendationEngine:
                 importance = model.feature_importances_
                 feature_importance[name] = {
                     feature: float(imp)
-                    for feature, imp in zip(self.config["features"], importance)
+                    for feature, imp in zip(
+                        self.config["features"], importance, strict=False
+                    )
                 }
         self.feature_importance = feature_importance
         return feature_importance
@@ -207,7 +210,9 @@ class AIRecommendationEngine:
         else:
             symbols = [f"Asset_{i + 1}" for i in range(len(predictions))]
         items = []
-        for i, (symbol, prediction) in enumerate(zip(symbols, predictions)):
+        for i, (symbol, prediction) in enumerate(
+            zip(symbols, predictions, strict=False)
+        ):
             if prediction > 0.05:
                 rec_type = "buy"
             elif prediction < -0.05:
@@ -221,7 +226,7 @@ class AIRecommendationEngine:
                 "predicted_return": float(prediction),
                 "confidence": float(confidence),
                 "time_horizon": f"{self.config['prediction_horizon']} days",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
             if all((f in features.columns for f in self.config["features"])):
                 item["features"] = {
@@ -231,7 +236,7 @@ class AIRecommendationEngine:
             items.append(item)
         items.sort(key=lambda x: abs(x["predicted_return"]), reverse=True)
         recommendations = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
             "prediction_horizon": self.config["prediction_horizon"],
             "model_type": self.config["model_type"],
             "recommendations": items,
@@ -261,7 +266,7 @@ class AIRecommendationEngine:
         else:
             outlook = "neutral"
         confidence = min(abs(avg_prediction) * 15, 1.0) * 100
-        today = datetime.utcnow()
+        today = utc_now()
         forecast_dates = [
             (today + timedelta(days=7)).strftime("%Y-%m-%d"),
             (today + timedelta(days=14)).strftime("%Y-%m-%d"),

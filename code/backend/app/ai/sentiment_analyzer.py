@@ -239,13 +239,16 @@ class SentimentAnalyzer:
         predictions = self.model.predict(processed_texts)
         probabilities = self.model.predict_proba(processed_texts)
         results = []
-        for i, (pred, probs) in enumerate(zip(predictions, probabilities)):
+        for i, (pred, probs) in enumerate(
+            zip(predictions, probabilities, strict=False)
+        ):
             result = {
                 "text": texts[i],
                 "sentiment": pred,
                 "confidence": float(max(probs)),
                 "probabilities": {
-                    cls: float(prob) for cls, prob in zip(self.model.classes_, probs)
+                    cls: float(prob)
+                    for cls, prob in zip(self.model.classes_, probs, strict=False)
                 },
             }
             results.append(result)

@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Optional
 
+from app.core.time_utils import utc_now
 from app.db.database import get_db
 from app.main import get_current_active_user
 from app.models import models
@@ -28,7 +29,7 @@ def get_admin_dashboard(db: Session = Depends(get_db)) -> Any:
     total_portfolios = db.query(models.Portfolio).count()
     total_transactions = db.query(models.Transaction).count()
     dashboard_data = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "user_stats": {
             "total_users": total_users,
             "active_users": active_users,
@@ -81,7 +82,7 @@ def get_admin_dashboard(db: Session = Depends(get_db)) -> Any:
                 "id": 1,
                 "type": "warning",
                 "message": "High API usage detected",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ],
     }
@@ -134,7 +135,7 @@ def update_user_status(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.is_active = is_active
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utc_now()
     db.commit()
     return {"message": f"User {user_id} status updated", "is_active": is_active}
 
@@ -154,7 +155,7 @@ def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.role = role
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utc_now()
     db.commit()
     return {"message": f"User {user_id} role updated to {role}"}
 
@@ -210,7 +211,7 @@ def get_system_performance() -> Any:
         cpu, mem, disk = 35.2, 42.8, 68.5
 
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now().isoformat(),
         "cpu_usage": cpu,
         "memory_usage": mem,
         "disk_usage": disk,
@@ -233,8 +234,8 @@ def trigger_system_backup() -> Any:
     return {
         "status": "success",
         "message": "System backup initiated",
-        "backup_id": "bkp-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S"),
-        "timestamp": datetime.utcnow().isoformat(),
+        "backup_id": "bkp-" + utc_now().strftime("%Y%m%d-%H%M%S"),
+        "timestamp": utc_now().isoformat(),
         "estimated_completion_minutes": 15,
     }
 
@@ -268,10 +269,10 @@ def create_announcement(announcement_data: dict) -> Any:
     expiry_days = int(announcement_data.get("expiry_days", 7))
     return {
         "status": "success",
-        "announcement_id": "ann-" + datetime.utcnow().strftime("%Y%m%d-%H%M%S"),
+        "announcement_id": "ann-" + utc_now().strftime("%Y%m%d-%H%M%S"),
         "title": announcement_data.get("title"),
         "message": announcement_data.get("message"),
         "target_users": announcement_data.get("target_users", "all"),
-        "publish_time": datetime.utcnow().isoformat(),
-        "expiry_time": (datetime.utcnow() + timedelta(days=expiry_days)).isoformat(),
+        "publish_time": utc_now().isoformat(),
+        "expiry_time": (utc_now() + timedelta(days=expiry_days)).isoformat(),
     }

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+from app.core.time_utils import utc_now
 
 warnings.filterwarnings("ignore")
 import logging
@@ -249,7 +250,7 @@ class AdvancedFraudDetectionSystem:
                 confidence_score=float(ensemble_prob),
                 risk_factors=risk_factors,
                 recommended_actions=recommendations,
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
                 additional_context={
                     "model_predictions": predictions,
                     "model_probabilities": probabilities,
@@ -269,7 +270,7 @@ class AdvancedFraudDetectionSystem:
                 confidence_score=0.5,
                 risk_factors=["System error during fraud detection"],
                 recommended_actions=["Manual review required"],
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
                 additional_context={"error": str(e)},
             )
 
@@ -293,7 +294,7 @@ class AdvancedFraudDetectionSystem:
                     device_patterns={},
                     location_patterns={},
                     network_connections=[],
-                    last_updated=datetime.utcnow(),
+                    last_updated=utc_now(),
                 )
             self._update_transaction_patterns(profile, transaction_data)
             if device_data:
@@ -301,7 +302,7 @@ class AdvancedFraudDetectionSystem:
             if location_data:
                 self._update_location_patterns(profile, location_data)
             profile.risk_score = self._calculate_user_risk_score(profile)
-            profile.last_updated = datetime.utcnow()
+            profile.last_updated = utc_now()
             self.user_profiles[user_id] = profile
             return profile
         except Exception as e:
@@ -316,7 +317,7 @@ class AdvancedFraudDetectionSystem:
                     device_patterns={},
                     location_patterns={},
                     network_connections=[],
-                    last_updated=datetime.utcnow(),
+                    last_updated=utc_now(),
                 ),
             )
 
@@ -409,7 +410,7 @@ class AdvancedFraudDetectionSystem:
                 ):
                     risk_factors.append("Unusual location")
                     risk_score += 0.4
-            current_time = datetime.utcnow().hour
+            current_time = utc_now().hour
             typical_hours = profile.behavioral_patterns.get("login_hours", [])
             if typical_hours and current_time not in typical_hours:
                 risk_factors.append("Unusual login time")
@@ -516,7 +517,7 @@ class AdvancedFraudDetectionSystem:
                 "test_accuracy": float(test_score),
                 "auc_score": float(auc_score) if auc_score else None,
                 "feature_importance": dict(
-                    zip(self.feature_columns, model.feature_importances_)
+                    zip(self.feature_columns, model.feature_importances_, strict=False)
                 ),
             }
         except Exception as e:
@@ -543,7 +544,7 @@ class AdvancedFraudDetectionSystem:
                 "test_accuracy": float(test_score),
                 "auc_score": float(auc_score),
                 "feature_importance": dict(
-                    zip(self.feature_columns, model.feature_importances_)
+                    zip(self.feature_columns, model.feature_importances_, strict=False)
                 ),
             }
         except Exception as e:

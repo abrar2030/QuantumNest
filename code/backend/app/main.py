@@ -93,7 +93,7 @@ async def get_current_user(
             raise credentials_exception
         token_data = schemas.TokenData(username=username)
     except JWTError:
-        raise credentials_exception
+        raise credentials_exception from None
     user = get_user(db, username=token_data.username)
     if user is None:
         raise credentials_exception

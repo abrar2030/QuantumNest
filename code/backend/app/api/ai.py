@@ -133,7 +133,7 @@ async def predict_asset_future(
         logger.error(f"Error submitting prediction task: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to submit prediction task: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/tasks/{task_id}")
@@ -180,7 +180,7 @@ async def get_task_status(
         logger.error(f"Error checking task status: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to check task status: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/sentiment/asset/{asset_symbol}")
@@ -227,7 +227,7 @@ async def analyze_asset_sentiment(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to submit sentiment analysis task: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/optimize/portfolio/{portfolio_id}")
@@ -292,7 +292,7 @@ async def optimize_user_portfolio(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to submit portfolio optimization task: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/risk/portfolio/{portfolio_id}")
@@ -351,7 +351,7 @@ async def analyze_portfolio_risk_async(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to submit portfolio risk analysis task: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/recommendations/market")
@@ -396,7 +396,7 @@ async def get_market_recommendations_async(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to submit market recommendations task: {str(e)}",
-        )
+        ) from e
 
 
 # Legacy synchronous endpoints - kept for backward compatibility but marked as deprecated

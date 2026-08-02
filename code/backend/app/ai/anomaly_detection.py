@@ -453,7 +453,7 @@ class FinancialAnomalyDetector:
         combined_scores = np.zeros(n_points)
         if self.config["ensemble_method"] == "voting":
             votes = np.zeros(n_points)
-            for method, scores in method_results.items():
+            for _method, scores in method_results.items():
                 if len(scores) == n_points:
                     threshold = np.percentile(scores, 90)
                     votes += (scores > threshold).astype(int)

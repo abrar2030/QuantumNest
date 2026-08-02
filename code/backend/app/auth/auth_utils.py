@@ -1,7 +1,8 @@
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Optional
 
+from app.core.time_utils import utc_now
 from app.db.database import get_db
 from app.models import models
 from app.schemas import schemas
@@ -25,9 +26,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utc_now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = utc_now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -69,7 +70,7 @@ async def get_current_user(
             raise credentials_exception
         token_data = schemas.TokenData(username=username)
     except JWTError:
-        raise credentials_exception
+        raise credentials_exception from None
     user = get_user(db, username=token_data.username)
     if user is None:
         raise credentials_exception

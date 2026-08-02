@@ -18,7 +18,7 @@ export default {
     extend: {
       fontFamily: {
         sans: [
-          "Inter",
+          "var(--font-sans)",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -29,12 +29,20 @@ export default {
           "sans-serif",
         ],
         display: [
-          "Lexend",
-          "Inter",
+          "var(--font-display)",
+          "var(--font-sans)",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
           "sans-serif",
+        ],
+        mono: [
+          "var(--font-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Consolas",
+          "monospace",
         ],
       },
       colors: {

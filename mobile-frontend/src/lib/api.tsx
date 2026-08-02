@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -60,6 +61,10 @@ function buildQuery(params?: QueryParams): string {
 
 export function ApiProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
+  // Mirrors `token`, but updates synchronously (unlike React state) so that
+  // a request fired immediately after setToken() — before the next render —
+  // still picks up the new value instead of a stale, closed-over one.
+  const tokenRef = useRef<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -67,12 +72,16 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = window.localStorage.getItem(TOKEN_KEY);
-      if (saved) setTokenState(saved);
+      if (saved) {
+        tokenRef.current = saved;
+        setTokenState(saved);
+      }
     }
     setHydrated(true);
   }, []);
 
   const setToken = useCallback((newToken: string | null) => {
+    tokenRef.current = newToken;
     setTokenState(newToken);
     if (typeof window !== "undefined") {
       if (newToken) {
@@ -114,14 +123,11 @@ export function ApiProvider({ children }: { children: ReactNode }) {
     return response.text();
   }, []);
 
-  const authHeaders = useCallback(
-    (extra?: HeadersInit): HeadersInit => {
-      const headers: Record<string, string> = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
-      return { ...headers, ...(extra as Record<string, string>) };
-    },
-    [token],
-  );
+  const authHeaders = useCallback((extra?: HeadersInit): HeadersInit => {
+    const headers: Record<string, string> = {};
+    if (tokenRef.current) headers.Authorization = `Bearer ${tokenRef.current}`;
+    return { ...headers, ...(extra as Record<string, string>) };
+  }, []);
 
   const get = useCallback(
     async <T,>(endpoint: string, params?: QueryParams): Promise<T> => {

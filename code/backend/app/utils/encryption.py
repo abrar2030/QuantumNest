@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 import bcrypt
 import pyotp
 from app.core.config import get_settings
+from app.core.time_utils import utc_now
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from cryptography.fernet import Fernet
@@ -354,8 +355,8 @@ class AdvancedEncryptionManager:
         self.key_metadata[key_id] = KeyInfo(
             key_id=key_id,
             key_type="fernet",
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + self.key_rotation_interval,
+            created_at=utc_now(),
+            expires_at=utc_now() + self.key_rotation_interval,
             algorithm="Fernet",
             key_size=256,
             usage=["encrypt", "decrypt"],
@@ -369,8 +370,8 @@ class AdvancedEncryptionManager:
         self.key_metadata[key_id] = KeyInfo(
             key_id=key_id,
             key_type="aes",
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + self.key_rotation_interval,
+            created_at=utc_now(),
+            expires_at=utc_now() + self.key_rotation_interval,
             algorithm=f"AES-{key_size}",
             key_size=key_size,
             usage=["encrypt", "decrypt"],
@@ -390,8 +391,8 @@ class AdvancedEncryptionManager:
             self.key_metadata[full_key_id] = KeyInfo(
                 key_id=full_key_id,
                 key_type=f"rsa_{key_type}",
-                created_at=datetime.utcnow(),
-                expires_at=datetime.utcnow() + self.key_rotation_interval,
+                created_at=utc_now(),
+                expires_at=utc_now() + self.key_rotation_interval,
                 algorithm=f"RSA-{key_size}",
                 key_size=key_size,
                 usage=["encrypt", "decrypt"] if key_type == "private" else ["encrypt"],
