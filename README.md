@@ -9,7 +9,7 @@
 QuantumNest is an innovative investment platform that combines artificial intelligence, blockchain technology, and quantitative finance to provide sophisticated investment strategies for tokenized assets.
 
 <div align="center">
-  <img src="docs/images/QuantumNest_dashboard.bmp" alt="QuantumNest Dashboard" width="80%">
+  <img src="docs/images/homepage.bmp" alt="QuantumNest HomePage" width="80%">
 </div>
 
 ## Table of Contents
