@@ -57,9 +57,14 @@ const statusStyle: Record<string, string> = {
   failed: "bg-destructive/10 text-destructive hover:bg-destructive/10",
 };
 
-function WalletCard() {
+function WalletCard({
+  networks,
+}: {
+  networks: BlockchainNetworksResponse | null;
+}) {
   const {
     account,
+    chainId,
     isConnected,
     isConnecting,
     connectWallet,
@@ -71,12 +76,20 @@ function WalletCard() {
   const [manualAddress, setManualAddress] = useState("");
   const [isLookingUp, setIsLookingUp] = useState(false);
 
+  // The connected wallet's chain isn't necessarily the network this server
+  // is configured to read from by default - resolve it from the (already
+  // fetched) supported-networks list so the balance shown is never
+  // silently for the wrong chain.
+  const walletNetwork = networks?.networks.find((n) => n.chain_id === chainId);
+  const networkMismatch = isConnected && chainId != null && !walletNetwork;
+
   async function lookupBalance(address: string) {
     if (!address) return;
     setIsLookingUp(true);
     try {
       const data = await get<WalletBalance>(
         `/blockchain/wallet/${address}/balance`,
+        walletNetwork ? { network: walletNetwork.id } : undefined,
       );
       setBalance(data);
     } catch (err) {
@@ -93,7 +106,7 @@ function WalletCard() {
   useEffect(() => {
     if (account) lookupBalance(account);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account]);
+  }, [account, chainId]);
 
   return (
     <Card>
@@ -123,6 +136,13 @@ function WalletCard() {
           </Button>
         )}
         {error && <p className="text-xs text-destructive">{error}</p>}
+        {networkMismatch && (
+          <p className="text-xs text-warning">
+            Your wallet is on a chain this server doesn&apos;t recognize;
+            showing the balance on{" "}
+            {networks?.default_network ?? "the default network"} instead.
+          </p>
+        )}
 
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -149,9 +169,12 @@ function WalletCard() {
 
         {balance && (
           <div>
-            <p className="text-sm text-muted-foreground">Total value</p>
-            <p className="font-display text-2xl font-semibold">
-              {formatCurrency(balance.total_value_usd)}
+            <p className="text-sm text-muted-foreground">
+              Balances on {balance.network}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Raw on-chain balances — no price feed is connected, so no USD
+              total is shown.
             </p>
             <div className="mt-3 space-y-2">
               {Object.entries(balance.balances).map(([token, info]) => (
@@ -161,7 +184,9 @@ function WalletCard() {
                 >
                   <span className="font-medium">{token}</span>
                   <span className="text-muted-foreground">
-                    {info.balance} · {formatCurrency(info.value_usd)}
+                    {Number(info.balance).toLocaleString(undefined, {
+                      maximumFractionDigits: 6,
+                    })}
                   </span>
                 </div>
               ))}
@@ -208,6 +233,11 @@ function BlockchainExplorerContent() {
       setContracts(contractsRes);
       setTransactions(txRes);
       setTokenizedAssets(tokensRes);
+      if (tokensRes.errors?.length) {
+        toast.warning(
+          `${tokensRes.errors.length} tokenized asset${tokensRes.errors.length > 1 ? "s" : ""} couldn't be read from the chain.`,
+        );
+      }
     } catch {
       setError("We couldn't load blockchain data right now.");
     } finally {
@@ -242,7 +272,20 @@ function BlockchainExplorerContent() {
               <SelectContent>
                 {networks.networks.map((n) => (
                   <SelectItem key={n.id} value={n.id}>
-                    {n.name}
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          n.reachable ? "bg-success" : "bg-muted-foreground/40"
+                        }`}
+                        title={n.reachable ? "Reachable" : "Unreachable"}
+                      />
+                      {n.name}
+                      {!n.contracts_deployed && (
+                        <span className="text-xs text-muted-foreground">
+                          (no contracts deployed)
+                        </span>
+                      )}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -252,12 +295,18 @@ function BlockchainExplorerContent() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <WalletCard />
+        <WalletCard networks={networks} />
 
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center gap-2">
             <Coins className="h-4 w-4 text-primary" />
-            <CardTitle className="font-display">Tokenized assets</CardTitle>
+            <div>
+              <CardTitle className="font-display">Tokenized assets</CardTitle>
+              <p className="text-xs font-normal text-muted-foreground">
+                Price and market cap are the issuer&apos;s own reported on-chain
+                valuation, not a live market price.
+              </p>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (

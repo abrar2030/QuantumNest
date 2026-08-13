@@ -94,6 +94,20 @@ class Settings(BaseSettings):
     BSC_RPC_URL: str = "https://bsc-dataseed.binance.org"
     PRIVATE_KEY: Optional[str] = None
     CONTRACT_ADDRESSES: Dict[str, str] = {}
+    # Which network's deployment (see blockchain/deployments/<name>.json) to
+    # load contract addresses + ABIs from. Must match a file written by
+    # `npm run deploy -- --network <BLOCKCHAIN_NETWORK>` in code/blockchain.
+    BLOCKCHAIN_NETWORK: str = "localhost"
+    # Where to find blockchain/deployments/. Defaults to the sibling
+    # directory that exists when backend/ and blockchain/ are checked out
+    # side-by-side under code/ (the common local-dev layout); in Docker
+    # this is overridden to the shared volume mount (see docker-compose.yml).
+    BLOCKCHAIN_DEPLOYMENTS_DIR: str = "../blockchain/deployments"
+    # Wei to allow as gas price headroom multiplier isn't configurable here;
+    # keep write operations opt-in and explicit instead: if PRIVATE_KEY is
+    # unset, blockchain endpoints that would send a transaction return a
+    # clear 503 rather than silently pretending to succeed.
+    BLOCKCHAIN_TX_TIMEOUT_SECONDS: int = 120
 
     # ── Logging ───────────────────────────────────────────────────────────────
     LOG_LEVEL: LogLevel = LogLevel.INFO

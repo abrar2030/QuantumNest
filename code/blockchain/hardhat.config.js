@@ -1,9 +1,43 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
+const { subtask } = require("hardhat/config");
+const {
+  TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD,
+} = require("hardhat/builtin-tasks/task-names");
 
-const PRIVATE_KEY =
-  process.env.PRIVATE_KEY ||
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // default Hardhat account #0
+const SOLC_VERSION = "0.8.20";
+
+// Hardhat normally downloads the solc binary/wasm build it needs from
+// https://binaries.soliditylang.org on every fresh machine/CI run. That
+// endpoint is unreachable in locked-down/offline environments (corporate
+// proxies, sandboxed CI, air-gapped builds), which makes `hardhat compile`
+// fail with HH502 even though nothing is wrong with the contracts.
+//
+// To make builds hermetic we ship the exact matching compiler as the
+// `solc` npm package (see package.json dependencies) and point Hardhat
+// at its bundled soljson.js instead of downloading it. If that package
+// isn't installed for some reason, we transparently fall back to
+// Hardhat's normal download behavior.
+subtask(TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD).setAction(
+  async (args, _hre, runSuper) => {
+    if (args.solcVersion === SOLC_VERSION) {
+      try {
+        const solcJsPath = require.resolve("solc/soljson.js");
+        return {
+          compilerPath: solcJsPath,
+          isSolcJs: true,
+          version: args.solcVersion,
+          longVersion: `${args.solcVersion}+commit.local`,
+        };
+      } catch (e) {
+        // local solc package not available, fall through to default
+      }
+    }
+    return runSuper(args);
+  },
+);
+
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
 
 /** @type import('hardhat/config').HardhatUserConfig */
@@ -15,6 +49,13 @@ module.exports = {
         enabled: true,
         runs: 200,
       },
+      // solidity-coverage instruments contracts with extra bookkeeping
+      // and compiles with the optimizer effectively off, which pushes a
+      // couple of functions (e.g. TradingPlatform.executeTrade,
+      // DeFiIntegration.createInvestment) past the EVM's 16-local-variable
+      // stack limit ("stack too deep"). Routing compilation through the
+      // IR pipeline avoids that without changing contract behavior.
+      viaIR: true,
     },
   },
   networks: {
@@ -30,20 +71,30 @@ module.exports = {
       url: "http://127.0.0.1:8545",
       chainId: 31337,
     },
-    // Testnets (require INFURA_API_KEY + PRIVATE_KEY)
-    goerli: {
-      url: INFURA_API_KEY
-        ? `https://goerli.infura.io/v3/${INFURA_API_KEY}`
-        : "https://rpc.ankr.com/eth_goerli",
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
-      chainId: 5,
+    // Used inside docker-compose, where the Hardhat node runs as the
+    // `blockchain` service rather than on localhost. See
+    // ../docker-compose.yml (services: blockchain, blockchain-deploy).
+    docker: {
+      url: process.env.HARDHAT_NETWORK_RPC_URL || "http://blockchain:8545",
+      chainId: 31337,
     },
-    polygon_mumbai: {
+    // Testnets (require INFURA_API_KEY + PRIVATE_KEY)
+    // NOTE: Goerli and Mumbai were deprecated and are no longer reliably
+    // available; Sepolia (Ethereum) and Amoy (Polygon) are their official
+    // replacements.
+    sepolia: {
       url: INFURA_API_KEY
-        ? `https://polygon-mumbai.infura.io/v3/${INFURA_API_KEY}`
-        : "https://rpc.ankr.com/polygon_mumbai",
+        ? `https://sepolia.infura.io/v3/${INFURA_API_KEY}`
+        : "https://rpc.ankr.com/eth_sepolia",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
-      chainId: 80001,
+      chainId: 11155111,
+    },
+    polygon_amoy: {
+      url: INFURA_API_KEY
+        ? `https://polygon-amoy.infura.io/v3/${INFURA_API_KEY}`
+        : "https://rpc.ankr.com/polygon_amoy",
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 80002,
     },
   },
   etherscan: {

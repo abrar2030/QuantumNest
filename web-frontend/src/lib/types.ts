@@ -357,18 +357,37 @@ export interface BlockchainTransaction {
 }
 
 export interface TokenizedAsset {
-  token_symbol: string;
-  name: string;
+  // Raw on-chain fields, straight from TokenizedAsset.getAssetDetails()
+  asset_symbol: string;
+  asset_name: string;
+  asset_type: string;
+  asset_value: number; // USD cents, as reported on-chain by the asset owner
+  description: string;
+  issuer: string;
+  issuance_date: number;
+  maturity_date: number;
+  year_to_date_return: number;
+  last_valuation_date: number;
+  trading_enabled: boolean;
+  trading_fee: number;
   contract_address: string;
-  total_supply: number;
+  token_name: string;
+  token_symbol: string;
+  total_supply: string; // decimal string - can exceed Number precision
+  // Derived aliases (real values computed from the fields above - see
+  // backend app/api/blockchain.py:_enrich_tokenized_asset - never a live
+  // market price, since no price oracle is wired up).
+  name: string | null;
+  underlying_asset: string | null;
   price_per_token: number;
-  underlying_asset: string;
   market_cap: number;
 }
 
 export interface TokenizedAssetsResponse {
   total: number;
+  network: string;
   data: TokenizedAsset[];
+  errors: Array<{ contract_address: string; error: string }> | null;
 }
 
 export interface BlockchainNetwork {
@@ -376,17 +395,23 @@ export interface BlockchainNetwork {
   name: string;
   chain_id: number;
   currency: string;
+  reachable: boolean;
+  contracts_deployed: boolean;
 }
 
 export interface BlockchainNetworksResponse {
+  default_network: string;
   networks: BlockchainNetwork[];
 }
 
 export interface WalletBalance {
   address: string;
   network: string;
-  balances: Record<string, { balance: number; value_usd: number }>;
-  total_value_usd: number;
+  // No value_usd/total_value_usd: no price oracle is wired up, so only
+  // real observed on-chain balances are returned - never a fabricated
+  // dollar value. balance is a decimal string (can exceed Number
+  // precision for some tokens).
+  balances: Record<string, { balance: string; contract_address?: string }>;
   timestamp: string;
 }
 

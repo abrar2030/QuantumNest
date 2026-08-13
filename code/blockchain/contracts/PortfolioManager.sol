@@ -247,7 +247,11 @@ contract PortfolioManager is Ownable, ReentrancyGuard {
     /**
      * @dev Record portfolio rebalance
      * @param _portfolioId Portfolio ID
-     * @param _transactions Array of transactions
+     * @param _tokenAddresses Token addresses involved in the rebalance
+     * @param _symbols Token symbols involved in the rebalance
+     * @param _amounts Transaction amounts
+     * @param _prices Transaction prices in USD cents
+     * @param _isBuys Whether each transaction is a buy or sell
      */
     function recordRebalance(
         uint256 _portfolioId,

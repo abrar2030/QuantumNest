@@ -6,7 +6,9 @@
     "compile": "hardhat compile",
     "node": "hardhat node",
     "test": "hardhat test",
-    "deploy": "hardhat run scripts/deploy.js"
+    "coverage": "hardhat coverage",
+    "deploy": "hardhat run scripts/deploy.js",
+    "export-abis": "hardhat run scripts/export-abis.js"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +22,7 @@
     "dotenv": "^16.4.5",
     "ethers": "^5.8.0",
     "hardhat": "^2.22.19",
+    "solc": "0.8.20",
     "solidity-coverage": "^0.8.14"
   }
 }

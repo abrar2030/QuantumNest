@@ -2,12 +2,28 @@ version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  QuantumNest Capital – Docker Compose
-#  Services: db · redis · backend · web-frontend · mobile-frontend
+#  Services: db · redis · backend · blockchain · web-frontend · mobile-frontend
 #
-#  This compose file was adapted from the original QuantumNest monorepo's
-#  code/docker-compose.yml to work with the flattened backend / web-frontend /
-#  mobile-frontend layout of this package. It adds the two frontend services
-#  (absent from the upstream file) and wires them to the backend.
+#  This file lives at code/docker-compose.yml. `backend` and `blockchain`
+#  build from ./backend and ./blockchain (inside code/); `web-frontend` and
+#  `mobile-frontend` build from ../web-frontend and ../mobile-frontend,
+#  since those two live at the repo root, as siblings of code/ - not inside
+#  it. Run compose commands from code/ (e.g. `cd code && docker compose up`).
+#
+#  `blockchain` runs a local Hardhat node (see ./blockchain) so the backend's
+#  blockchain features work out of the box with `docker compose up`, with no
+#  external RPC provider needed. Contracts aren't deployed to it
+#  automatically on every boot (the node's state is ephemeral and wiping it
+#  on every `docker compose up` would be surprising) - run the one-shot
+#  `blockchain-deploy` job once the node is healthy:
+#
+#    docker compose up -d blockchain
+#    docker compose --profile blockchain-deploy run --rm blockchain-deploy
+#    docker compose up -d backend
+#
+#  Until that's run, blockchain endpoints that need a deployed contract
+#  return a clear "not deployed" response rather than failing the whole
+#  backend - see backend/app/services/blockchain_service.py.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # NEXT_PUBLIC_* variables are inlined into each frontend's client bundle at
@@ -37,11 +53,21 @@ x-backend-env: &backend-env
   ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY:-}
   SENTRY_DSN: ${SENTRY_DSN:-}
   PROMETHEUS_ENABLED: ${PROMETHEUS_ENABLED:-false}
-  # Points at the app's own default (localhost:8545) unless overridden.
-  # The optional Hardhat blockchain node from the full QuantumNest monorepo
-  # is not part of this package — set ETHEREUM_RPC_URL if you run one
-  # separately, or leave it unset to use the built-in default.
-  ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-http://localhost:8545}
+  # Points at the `blockchain` service (local Hardhat node) by default;
+  # override to point at a real testnet/mainnet RPC provider instead.
+  ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-http://blockchain:8545}
+  POLYGON_RPC_URL: ${POLYGON_RPC_URL:-https://polygon-rpc.com}
+  BSC_RPC_URL: ${BSC_RPC_URL:-https://bsc-dataseed.binance.org}
+  # Optional: a funded account's private key, needed only for endpoints
+  # that send transactions (contract deployment, state-changing calls).
+  # Read-only endpoints (balances, contract reads) work without it.
+  PRIVATE_KEY: ${BLOCKCHAIN_PRIVATE_KEY:-}
+  # Matches the network name `blockchain-deploy` deploys to (see
+  # blockchain/hardhat.config.js's `docker` network) - i.e. which
+  # blockchain/deployments/<name>.json file to read contract addresses
+  # from.
+  BLOCKCHAIN_NETWORK: ${BLOCKCHAIN_NETWORK:-docker}
+  BLOCKCHAIN_DEPLOYMENTS_DIR: /app/deployments
 
 services:
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
@@ -88,6 +114,59 @@ services:
     networks:
       - qn_internal
 
+  # ── Blockchain (local Hardhat node) ─────────────────────────────────────────
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8545:8545" # bind to localhost only
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - >
+          const http=require('http');
+          const data=JSON.stringify({jsonrpc:"2.0",method:"eth_blockNumber",params:[],id:1});
+          const req=http.request({host:'localhost',port:8545,method:'POST',
+          headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(data)}},
+          res=>process.exit(res.statusCode===200?0:1));
+          req.on('error',()=>process.exit(1));req.write(data);req.end();
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - qn_internal
+
+  # ── Blockchain contract deployment (one-shot job) ───────────────────────────
+  # Deploys the contracts in ./blockchain to the `blockchain` service and
+  # writes their addresses/ABIs to a volume the backend reads from. Not run
+  # automatically (the node's chain state is ephemeral, so this would
+  # otherwise re-deploy - and hand out new addresses - on every restart).
+  # Run manually once the node is up:
+  #   docker compose --profile blockchain-deploy run --rm blockchain-deploy
+  blockchain-deploy:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    command:
+      ["npx", "hardhat", "run", "scripts/deploy.js", "--network", "docker"]
+    environment:
+      HARDHAT_NETWORK_RPC_URL: http://blockchain:8545
+    depends_on:
+      blockchain:
+        condition: service_healthy
+    volumes:
+      - blockchain_deployments:/app/deployments
+    restart: "no"
+    networks:
+      - qn_internal
+    profiles:
+      - blockchain-deploy
+
   # ── FastAPI Backend ─────────────────────────────────────────────────────────
   backend:
     build:
@@ -104,10 +183,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      blockchain:
+        condition: service_started
     volumes:
       - backend_uploads:/app/uploads
       - backend_models:/app/models
       - backend_logs:/app/logs
+      - blockchain_deployments:/app/deployments:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -121,7 +203,7 @@ services:
   # ── Web Frontend (Next.js) ──────────────────────────────────────────────────
   web-frontend:
     build:
-      context: ./web-frontend
+      context: ../web-frontend
       dockerfile: Dockerfile
       args:
         <<: *frontend-build-args
@@ -143,7 +225,7 @@ services:
   # ── Mobile Frontend (Next.js, PWA) ──────────────────────────────────────────
   mobile-frontend:
     build:
-      context: ./mobile-frontend
+      context: ../mobile-frontend
       dockerfile: Dockerfile
       args:
         <<: *frontend-build-args
@@ -191,6 +273,7 @@ volumes:
   backend_uploads:
   backend_models:
   backend_logs:
+  blockchain_deployments:
 
 networks:
   qn_internal:

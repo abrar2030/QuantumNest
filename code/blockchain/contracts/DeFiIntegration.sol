@@ -90,6 +90,10 @@ contract DeFiIntegration is Ownable, ReentrancyGuard {
     );
     event InvestmentUpdated(uint256 indexed investmentId, uint256 currentValue);
     event InvestmentClosed(uint256 indexed investmentId, uint256 finalValue);
+    event InvestmentForceClosed(
+        uint256 indexed investmentId,
+        uint256 finalValue
+    );
     event YieldClaimed(
         uint256 indexed yieldClaimId,
         address indexed investor,
@@ -318,30 +322,58 @@ contract DeFiIntegration is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Close investment
+     * @dev Close investment and withdraw funds. Investors can only close
+     * using the strategy's oracle-attested `currentValue` (set exclusively
+     * by the contract owner via {updateInvestmentValue}) once the lock
+     * period has elapsed. This intentionally does NOT accept a caller
+     * supplied final value: allowing an investor to self-declare an
+     * arbitrary payout would let them drain tokens pooled from other
+     * investors. Owners needing to force-close with a custom valuation
+     * (e.g. emergency liquidation) should use {forceCloseInvestment}.
      * @param _investmentId Investment ID
-     * @param _finalValue Final investment value
      */
-    function closeInvestment(
-        uint256 _investmentId,
-        uint256 _finalValue
-    ) external nonReentrant {
+    function closeInvestment(uint256 _investmentId) external nonReentrant {
         Investment storage investment = investments[_investmentId];
 
         require(investment.isActive, "Investment not active");
+        require(investment.investor == msg.sender, "Not investor");
+
+        Strategy storage strategy = strategies[investment.strategyId];
         require(
-            investment.investor == msg.sender || owner() == msg.sender,
-            "Not authorized"
+            block.timestamp >= investment.startTime + strategy.lockPeriod,
+            "Lock period not ended"
         );
 
-        // If not owner, check lock period
-        if (msg.sender != owner()) {
-            Strategy storage strategy = strategies[investment.strategyId];
-            require(
-                block.timestamp >= investment.startTime + strategy.lockPeriod,
-                "Lock period not ended"
-            );
-        }
+        uint256 finalValue = investment.currentValue;
+
+        // Update investment
+        investment.isActive = false;
+        investment.endTime = block.timestamp;
+
+        // Transfer tokens back to investor
+        IERC20 token = IERC20(strategy.assetAddress);
+        require(
+            token.transfer(investment.investor, finalValue),
+            "Token transfer failed"
+        );
+
+        emit InvestmentClosed(_investmentId, finalValue);
+    }
+
+    /**
+     * @dev Owner-only override to close an investment immediately with an
+     * explicit final value, bypassing the lock period. Intended for
+     * administrative actions (e.g. emergency unwind, dispute resolution).
+     * @param _investmentId Investment ID
+     * @param _finalValue Final investment value set by the owner
+     */
+    function forceCloseInvestment(
+        uint256 _investmentId,
+        uint256 _finalValue
+    ) external onlyOwner nonReentrant {
+        Investment storage investment = investments[_investmentId];
+
+        require(investment.isActive, "Investment not active");
 
         // Update investment
         investment.isActive = false;
@@ -355,7 +387,7 @@ contract DeFiIntegration is Ownable, ReentrancyGuard {
             "Token transfer failed"
         );
 
-        emit InvestmentClosed(_investmentId, _finalValue);
+        emit InvestmentForceClosed(_investmentId, _finalValue);
     }
 
     /**
@@ -372,8 +404,13 @@ contract DeFiIntegration is Ownable, ReentrancyGuard {
 
         require(investment.isActive, "Investment not active");
         require(investment.investor == msg.sender, "Not investor");
+        require(_amount > 0, "Amount must be greater than 0");
 
         // Calculate available yield
+        require(
+            investment.currentValue >= investment.initialValue,
+            "No yield available"
+        );
         uint256 availableYield =
             investment.currentValue - investment.initialValue;
         require(availableYield >= _amount, "Insufficient yield");

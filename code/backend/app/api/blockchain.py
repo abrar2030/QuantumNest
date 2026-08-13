@@ -1,14 +1,56 @@
 from typing import Any, List, Optional
 
+from app.core.config import get_settings
 from app.core.time_utils import utc_now
 from app.db.database import get_db
 from app.main import get_current_active_user
 from app.models import models
 from app.schemas import schemas
+from app.services.blockchain_service import (
+    KNOWN_CONTRACT_TYPES,
+    BlockchainServiceError,
+    ContractNotDeployedError,
+    NetworkUnavailableError,
+    WriteNotConfiguredError,
+    get_blockchain_service,
+    is_read_only_function,
+    json_safe,
+)
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 router = APIRouter()
+
+
+def _raise_for_service_error(exc: BlockchainServiceError) -> None:
+    """Map a BlockchainService exception onto the right HTTP status."""
+    if isinstance(exc, WriteNotConfiguredError):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    if isinstance(exc, ContractNotDeployedError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    if isinstance(exc, NetworkUnavailableError):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+    raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+def _enrich_tokenized_asset(details: dict) -> dict:
+    """Add frontend-friendly aliases derived from real on-chain fields.
+
+    `asset_value` is the contract's own reported valuation (in USD cents,
+    set by its owner via TokenizedAsset.updateAssetValue) - not a live
+    market price from an oracle, but a real on-chain number, so deriving
+    a dollar "price per token" and a market cap from it is a straight unit
+    conversion, not fabrication. No externally-sourced price data is
+    involved anywhere here.
+    """
+    enriched = dict(details)
+    price_per_token = details.get("asset_value", 0) / 100
+    total_supply = float(details.get("total_supply", 0) or 0)
+    enriched["name"] = details.get("token_name")
+    enriched["underlying_asset"] = details.get("asset_name")
+    enriched["price_per_token"] = price_per_token
+    enriched["market_cap"] = price_per_token * total_supply
+    return enriched
 
 
 @router.get("/contracts/", response_model=List[schemas.SmartContract])
@@ -119,21 +161,53 @@ def get_blockchain_transaction(
 @router.get("/wallet/{address}/balance")
 def get_wallet_balance(
     address: str,
-    network: str = "ethereum",
-    db: Session = Depends(get_db),
+    network: Optional[str] = None,
     current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
+    """Real ETH balance (and, where deployed, the demo QNT token balance)
+    for `address` on `network`, read live from the chain. No price feed is
+    wired up, so no USD conversion is included - only real observed
+    balances.
+    """
     if not address.startswith("0x") or len(address) != 42:
         raise HTTPException(status_code=400, detail="Invalid Ethereum wallet address")
+
+    settings = get_settings()
+    network = network or settings.BLOCKCHAIN_NETWORK
+    service = get_blockchain_service()
+
+    if not service.is_connected(network):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not reach an RPC endpoint for network '{network}'",
+        )
+
+    try:
+        eth_balance = service.get_eth_balance(address, network)
+    except BlockchainServiceError as exc:
+        _raise_for_service_error(exc)
+
+    balances = {"ETH": {"balance": str(eth_balance)}}
+
+    test_token_address = service.get_known_contract_address("TestToken", network)
+    if test_token_address:
+        try:
+            token_balance = service.get_erc20_balance(
+                test_token_address, address, network
+            )
+            balances[token_balance["symbol"]] = {
+                "balance": str(token_balance["balance"]),
+                "contract_address": test_token_address,
+            }
+        except BlockchainServiceError:
+            # Token balance is a bonus, not required for the endpoint to
+            # succeed - the ETH balance above already answered the question.
+            pass
+
     return {
         "address": address,
         "network": network,
-        "balances": {
-            "ETH": {"balance": 1.245, "value_usd": 3981.60},
-            "USDC": {"balance": 5000.0, "value_usd": 5000.0},
-            "USDT": {"balance": 2500.0, "value_usd": 2500.0},
-        },
-        "total_value_usd": 11481.60,
+        "balances": balances,
         "timestamp": utc_now().isoformat(),
     }
 
@@ -144,24 +218,109 @@ def deploy_smart_contract(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
+    """Deploy a real contract instance on-chain.
+
+    `contract_data` must include either:
+      - `contract_type`: one of KNOWN_CONTRACT_TYPES, to deploy a fresh
+        instance using this repo's own compiled bytecode/ABI, or
+      - `abi` and `bytecode`: to deploy an arbitrary externally-compiled
+        contract.
+    Optional: `name` (display name), `network` (defaults to the server's
+    configured network), `constructor_args` (positional list).
+
+    Requires the server to have PRIVATE_KEY configured (503 otherwise).
+    """
     allowed_tiers = ["premium", "professional", "enterprise", "institutional"]
-    if str(current_user.tier) not in allowed_tiers and not any(
-        t in str(current_user.tier) for t in allowed_tiers
-    ):
+    user_tier = (
+        current_user.tier.value
+        if hasattr(current_user.tier, "value")
+        else str(current_user.tier)
+    )
+    if user_tier not in allowed_tiers:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Smart contract deployment requires Premium tier or higher",
         )
+
+    settings = get_settings()
+    network = contract_data.get("network") or settings.BLOCKCHAIN_NETWORK
+    contract_type = contract_data.get("contract_type")
+    abi = contract_data.get("abi")
+    bytecode = contract_data.get("bytecode")
+    constructor_args = contract_data.get("constructor_args", [])
+    name = contract_data.get("name") or contract_type or "Unnamed Contract"
+
+    service = get_blockchain_service()
+
+    try:
+        if abi and bytecode:
+            deploy_result = service.deploy_contract(
+                abi, bytecode, constructor_args, network
+            )
+            deploy_result["abi"] = abi
+        elif contract_type:
+            deploy_result = service.deploy_known_contract(
+                contract_type, constructor_args, network
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Provide either 'contract_type' (one of "
+                    f"{KNOWN_CONTRACT_TYPES}) or both 'abi' and 'bytecode'."
+                ),
+            )
+    except BlockchainServiceError as exc:
+        _raise_for_service_error(exc)
+
+    if deploy_result["status"] != "success":
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Deployment transaction reverted: {deploy_result['tx_hash']}",
+        )
+
+    w3 = service.get_web3(network)
+    db_contract = models.SmartContract(
+        address=deploy_result["contract_address"],
+        name=name,
+        contract_type=contract_type or "custom",
+        network=network,
+        chain_id=w3.eth.chain_id,
+        abi=deploy_result["abi"],
+        bytecode=bytecode or service.load_bytecode(contract_type),
+        deployment_tx_hash=deploy_result["tx_hash"],
+        is_verified=bool(contract_type),  # bundled source == verified
+        is_active=True,
+    )
+    db.add(db_contract)
+    db.commit()
+    db.refresh(db_contract)
+
+    db_transaction = models.BlockchainTransaction(
+        tx_hash=deploy_result["tx_hash"],
+        contract_id=db_contract.id,
+        from_address=deploy_result["from_address"],
+        to_address=deploy_result["contract_address"],
+        value=0,
+        gas_used=deploy_result["gas_used"],
+        block_number=deploy_result["block_number"],
+        status=deploy_result["status"],
+        network=network,
+    )
+    db.add(db_transaction)
+    db.commit()
+
     return {
-        "status": "success",
-        "contract_name": contract_data.get("name", "Unnamed Contract"),
-        "contract_type": contract_data.get("type", "Unknown"),
-        "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-        "transaction_hash": "0x7d2a5b3e8f4a1b9c6d8e7f0a2b3c4d5e6f7a8b9c",
-        "block_number": 19250050,
-        "gas_used": 1250000,
+        "status": deploy_result["status"],
+        "contract_id": db_contract.id,
+        "contract_name": name,
+        "contract_type": db_contract.contract_type,
+        "address": deploy_result["contract_address"],
+        "transaction_hash": deploy_result["tx_hash"],
+        "block_number": deploy_result["block_number"],
+        "gas_used": deploy_result["gas_used"],
         "timestamp": utc_now().isoformat(),
-        "network": contract_data.get("network", "Ethereum Testnet"),
+        "network": network,
     }
 
 
@@ -172,6 +331,14 @@ def execute_smart_contract(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
+    """Call a real function on a previously deployed/registered contract.
+
+    `function_data`: {"function": "<name>", "args": [...]}. Whether this
+    is a free read (`.call()`) or a signed transaction is determined
+    automatically from the contract's own ABI (view/pure vs
+    nonpayable/payable) - state-changing calls require PRIVATE_KEY to be
+    configured on the server (503 otherwise).
+    """
     db_contract = (
         db.query(models.SmartContract)
         .filter(
@@ -182,16 +349,64 @@ def execute_smart_contract(
     )
     if db_contract is None:
         raise HTTPException(status_code=404, detail="Smart contract not found")
+    if not db_contract.abi:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This contract has no ABI on record; cannot determine its "
+            "functions. Re-register it with an ABI via POST /contracts/.",
+        )
+
+    function_name = function_data.get("function")
+    if not function_name:
+        raise HTTPException(status_code=400, detail="'function' is required")
+    args = function_data.get("args", [])
+    network = function_data.get("network") or db_contract.network
+
+    service = get_blockchain_service()
+
+    try:
+        if is_read_only_function(db_contract.abi, function_name):
+            result = service.call_read_function(
+                db_contract.address, db_contract.abi, function_name, args, network
+            )
+            return {
+                "status": "success",
+                "contract_id": contract_id,
+                "contract_address": db_contract.address,
+                "function_name": function_name,
+                "result": json_safe(result),
+                "timestamp": utc_now().isoformat(),
+            }
+
+        tx_result = service.send_contract_transaction(
+            db_contract.address, db_contract.abi, function_name, args, network
+        )
+    except BlockchainServiceError as exc:
+        _raise_for_service_error(exc)
+
+    db_transaction = models.BlockchainTransaction(
+        tx_hash=tx_result["tx_hash"],
+        contract_id=db_contract.id,
+        from_address=tx_result["from_address"],
+        to_address=db_contract.address,
+        value=0,
+        gas_used=tx_result["gas_used"],
+        block_number=tx_result["block_number"],
+        status=tx_result["status"],
+        network=network,
+    )
+    db.add(db_transaction)
+    db.commit()
+
     return {
-        "status": "success",
+        "status": tx_result["status"],
         "contract_id": contract_id,
         "contract_address": db_contract.address,
-        "function_name": function_data.get("function", "unknown"),
-        "transaction_hash": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
-        "block_number": 19250055,
-        "gas_used": 75000,
+        "function_name": function_name,
+        "transaction_hash": tx_result["tx_hash"],
+        "block_number": tx_result["block_number"],
+        "gas_used": tx_result["gas_used"],
         "timestamp": utc_now().isoformat(),
-        "result": "Function executed successfully",
     }
 
 
@@ -199,49 +414,55 @@ def execute_smart_contract(
 def get_tokenized_assets(
     skip: int = 0,
     limit: int = 100,
+    network: Optional[str] = None,
+    db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
-    tokenized_assets = [
-        {
-            "token_symbol": "QNC-AAPL",
-            "name": "Tokenized Apple Inc.",
-            "contract_address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-            "total_supply": 10000,
-            "price_per_token": 2.15,
-            "underlying_asset": "AAPL",
-            "market_cap": 21500.0,
-        },
-        {
-            "token_symbol": "QNC-TSLA",
-            "name": "Tokenized Tesla Inc.",
-            "contract_address": "0x8901DaECbfF9e1d2c7b9C2a154b9dAc45a1B5092",
-            "total_supply": 5000,
-            "price_per_token": 1.8,
-            "underlying_asset": "TSLA",
-            "market_cap": 9000.0,
-        },
-        {
-            "token_symbol": "QNC-GOLD",
-            "name": "Tokenized Gold",
-            "contract_address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-            "total_supply": 20000,
-            "price_per_token": 0.95,
-            "underlying_asset": "Gold",
-            "market_cap": 19000.0,
-        },
-        {
-            "token_symbol": "QNC-REITS",
-            "name": "Tokenized Real Estate Index",
-            "contract_address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-            "total_supply": 15000,
-            "price_per_token": 1.25,
-            "underlying_asset": "Real Estate Index",
-            "market_cap": 18750.0,
-        },
-    ]
+    """Real on-chain details (via TokenizedAsset.getAssetDetails()) for
+    every active TokenizedAsset-type contract on record, enriched with a
+    few presentation-friendly aliases derived from those same on-chain
+    fields (see _enrich_tokenized_asset) - no externally-sourced price
+    data. Contracts get on record either by being deployed through
+    POST /deploy/contract, by being registered through POST /contracts/,
+    or - for the network this server is configured for - automatically,
+    from the chain's own deployment manifest
+    (blockchain/deployments/<network>.json), so a freshly `npm run
+    deploy`-ed local chain shows up here with no manual registration step.
+    """
+    settings = get_settings()
+    network = network or settings.BLOCKCHAIN_NETWORK
+    service = get_blockchain_service()
+
+    db_contracts = (
+        db.query(models.SmartContract)
+        .filter(
+            models.SmartContract.contract_type == "TokenizedAsset",
+            models.SmartContract.is_active == True,
+            models.SmartContract.network == network,
+        )
+        .all()
+    )
+    addresses = [c.address for c in db_contracts]
+
+    if not addresses:
+        known_address = service.get_known_contract_address("TokenizedAsset", network)
+        if known_address:
+            addresses = [known_address]
+
+    assets = []
+    errors = []
+    for address in addresses[skip : skip + limit]:
+        try:
+            details = service.get_tokenized_asset_details(address, network)
+            assets.append(_enrich_tokenized_asset(details))
+        except BlockchainServiceError as exc:
+            errors.append({"contract_address": address, "error": str(exc)})
+
     return {
-        "total": len(tokenized_assets),
-        "data": tokenized_assets[skip : skip + limit],
+        "total": len(addresses),
+        "network": network,
+        "data": assets,
+        "errors": errors or None,
     }
 
 
@@ -249,27 +470,28 @@ def get_tokenized_assets(
 def get_supported_networks(
     current_user: models.User = Depends(get_current_active_user),
 ) -> Any:
-    return {
-        "networks": [
+    """Live status (reachable? contracts deployed?) for every network this
+    server knows an RPC endpoint for - not a static, possibly-stale list.
+    """
+    service = get_blockchain_service()
+
+    candidates = [
+        {"id": "localhost", "name": "Local Hardhat Node", "chain_id": 31337, "currency": "ETH"},
+        {"id": "sepolia", "name": "Ethereum Sepolia Testnet", "chain_id": 11155111, "currency": "ETH"},
+        {"id": "polygon_amoy", "name": "Polygon Amoy Testnet", "chain_id": 80002, "currency": "MATIC"},
+        {"id": "polygon", "name": "Polygon Mainnet", "chain_id": 137, "currency": "MATIC"},
+        {"id": "bsc", "name": "BNB Smart Chain", "chain_id": 56, "currency": "BNB"},
+    ]
+
+    networks = []
+    for candidate in candidates:
+        connected = service.is_connected(candidate["id"])
+        networks.append(
             {
-                "id": "ethereum",
-                "name": "Ethereum Mainnet",
-                "chain_id": 1,
-                "currency": "ETH",
-            },
-            {"id": "polygon", "name": "Polygon", "chain_id": 137, "currency": "MATIC"},
-            {"id": "bsc", "name": "BNB Smart Chain", "chain_id": 56, "currency": "BNB"},
-            {
-                "id": "arbitrum",
-                "name": "Arbitrum One",
-                "chain_id": 42161,
-                "currency": "ETH",
-            },
-            {
-                "id": "goerli",
-                "name": "Goerli Testnet",
-                "chain_id": 5,
-                "currency": "ETH",
-            },
-        ]
-    }
+                **candidate,
+                "reachable": connected,
+                "contracts_deployed": bool(service.known_contracts(candidate["id"])),
+            }
+        )
+
+    return {"default_network": get_settings().BLOCKCHAIN_NETWORK, "networks": networks}

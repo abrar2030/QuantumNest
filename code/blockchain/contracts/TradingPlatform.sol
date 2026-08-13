@@ -40,6 +40,11 @@ contract TradingPlatform is Ownable, ReentrancyGuard {
     address public feeCollector;
     bool public tradingEnabled;
 
+    // ERC20 token used to settle payment for trades (e.g. a stablecoin).
+    // `Order.price` is denominated in units of this token per whole unit of
+    // the traded asset token.
+    IERC20 public paymentToken;
+
     // Order and trade storage
     mapping(uint256 => Order) public orders;
     mapping(uint256 => Trade) public trades;
@@ -78,21 +83,26 @@ contract TradingPlatform is Ownable, ReentrancyGuard {
     event TradingStatusChanged(bool enabled);
     event TradingFeeUpdated(uint256 newFee);
     event FeeCollectorUpdated(address newFeeCollector);
+    event PaymentTokenUpdated(address newPaymentToken);
 
     /**
      * @dev Constructor
      * @param _tradingFee Initial trading fee in basis points
      * @param _feeCollector Address to collect fees
+     * @param _paymentToken ERC20 token used to settle trade payments
      */
     constructor(
         uint256 _tradingFee,
-        address _feeCollector
+        address _feeCollector,
+        address _paymentToken
     ) Ownable(msg.sender) {
         require(_tradingFee <= 100, "Fee too high"); // Max 1%
         require(_feeCollector != address(0), "Invalid fee collector");
+        require(_paymentToken != address(0), "Invalid payment token");
 
         tradingFee = _tradingFee;
         feeCollector = _feeCollector;
+        paymentToken = IERC20(_paymentToken);
         tradingEnabled = false;
         orderIdCounter = 1;
         tradeIdCounter = 1;
@@ -127,6 +137,18 @@ contract TradingPlatform is Ownable, ReentrancyGuard {
             require(
                 token.allowance(msg.sender, address(this)) >= _amount,
                 "Insufficient token allowance"
+            );
+        } else {
+            // For buy orders, check payment token balance and approval
+            // covers the full cost (amount * price).
+            uint256 totalCost = _amount * _price;
+            require(
+                paymentToken.balanceOf(msg.sender) >= totalCost,
+                "Insufficient payment token balance"
+            );
+            require(
+                paymentToken.allowance(msg.sender, address(this)) >= totalCost,
+                "Insufficient payment token allowance"
             );
         }
 
@@ -277,10 +299,23 @@ contract TradingPlatform is Ownable, ReentrancyGuard {
             "Token transfer failed"
         );
 
-        // Transfer fee to fee collector
+        // Settle payment from buyer to seller, net of the platform fee,
+        // which is routed to the fee collector. The buyer pays the full
+        // totalValue; the seller receives totalValue - fee.
+        require(
+            paymentToken.transferFrom(
+                buyOrder.maker,
+                sellOrder.maker,
+                totalValue - fee
+            ),
+            "Payment transfer failed"
+        );
+
         if (fee > 0) {
-            // Fee is paid by both parties
-            // Implementation depends on how fees are collected (e.g., separate token, off-chain)
+            require(
+                paymentToken.transferFrom(buyOrder.maker, feeCollector, fee),
+                "Fee transfer failed"
+            );
         }
 
         // Update order amounts
@@ -386,6 +421,18 @@ contract TradingPlatform is Ownable, ReentrancyGuard {
         feeCollector = _feeCollector;
 
         emit FeeCollectorUpdated(_feeCollector);
+    }
+
+    /**
+     * @dev Set payment token used to settle trades
+     * @param _paymentToken ERC20 token address
+     */
+    function setPaymentToken(address _paymentToken) external onlyOwner {
+        require(_paymentToken != address(0), "Invalid payment token");
+
+        paymentToken = IERC20(_paymentToken);
+
+        emit PaymentTokenUpdated(_paymentToken);
     }
 
     /**

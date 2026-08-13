@@ -38,7 +38,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     volumes:
-      - ./web-frontend:/app # live-reload: mount source over the image copy
+      - ../web-frontend:/app # live-reload: mount source over the image copy
       - /app/node_modules # keep the container's node_modules (don't shadow with host)
       - /app/.next
     ports:
@@ -51,7 +51,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     volumes:
-      - ./mobile-frontend:/app
+      - ../mobile-frontend:/app
       - /app/node_modules
       - /app/.next
     ports:

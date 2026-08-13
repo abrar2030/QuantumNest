@@ -38,7 +38,11 @@ backend/logs/
 node_modules/
 blockchain/artifacts/
 blockchain/cache/
-blockchain/deployments/
+blockchain/coverage/
+blockchain/coverage.json
+blockchain/deployments/*.json
+blockchain/deployments/abis/
+!blockchain/deployments/README.md
 
 # IDE
 .idea/

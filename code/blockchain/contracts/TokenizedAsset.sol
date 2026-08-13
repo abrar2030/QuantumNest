@@ -144,31 +144,54 @@ contract TokenizedAsset is ERC20, Ownable {
     }
 
     /**
-     * @dev Override transfer function to enforce trading rules
+     * @dev Override OpenZeppelin v5's ERC20._update (the single internal hook
+     * for mints, burns and transfers) to enforce trading rules and collect
+     * the trading fee. `_transfer` itself is no longer virtual in OZ v5, so
+     * `_update` is the correct extension point.
+     *
+     * Minting (`from == address(0)`) and burning (`to == address(0)`) are
+     * intentionally exempt from the trading-enabled check and fee, matching
+     * the original design where only actual transfers were restricted.
      */
-    function _transfer(
-        address sender,
-        address recipient,
-        uint256 amount
+    function _update(
+        address from,
+        address to,
+        uint256 value
     ) internal override {
+        if (from == address(0) || to == address(0)) {
+            super._update(from, to, value);
+            return;
+        }
+
         require(
-            tradingEnabled || sender == owner() || recipient == owner(),
+            tradingEnabled || from == owner() || to == owner(),
             "Trading not enabled"
         );
 
         // Calculate fee if sender is not owner
-        if (sender != owner() && tradingFee > 0) {
-            uint256 fee = (amount * tradingFee) / 10000;
-            super._transfer(sender, owner(), fee);
-            super._transfer(sender, recipient, amount - fee);
+        if (from != owner() && tradingFee > 0) {
+            uint256 fee = (value * tradingFee) / 10000;
+            super._update(from, owner(), fee);
+            super._update(from, to, value - fee);
         } else {
-            super._transfer(sender, recipient, amount);
+            super._update(from, to, value);
         }
     }
 
     /**
      * @dev Get asset details
-     * @return Asset details as a struct
+     * @return _assetSymbol Underlying asset symbol
+     * @return _assetName Underlying asset name
+     * @return _assetType Type of asset
+     * @return _assetValue Asset value in USD cents
+     * @return _description Asset description
+     * @return _issuer Asset issuer
+     * @return _issuanceDate Timestamp the asset was issued
+     * @return _maturityDate Maturity timestamp (0 if none)
+     * @return _yearToDateReturn Year-to-date return in basis points
+     * @return _lastValuationDate Timestamp of the last valuation
+     * @return _tradingEnabled Whether trading is currently enabled
+     * @return _tradingFee Trading fee in basis points
      */
     function getAssetDetails()
         external
