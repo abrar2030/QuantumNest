@@ -25,7 +25,9 @@ router = APIRouter()
 def _raise_for_service_error(exc: BlockchainServiceError) -> None:
     """Map a BlockchainService exception onto the right HTTP status."""
     if isinstance(exc, WriteNotConfiguredError):
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        )
     if isinstance(exc, ContractNotDeployedError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, NetworkUnavailableError):
@@ -476,10 +478,30 @@ def get_supported_networks(
     service = get_blockchain_service()
 
     candidates = [
-        {"id": "localhost", "name": "Local Hardhat Node", "chain_id": 31337, "currency": "ETH"},
-        {"id": "sepolia", "name": "Ethereum Sepolia Testnet", "chain_id": 11155111, "currency": "ETH"},
-        {"id": "polygon_amoy", "name": "Polygon Amoy Testnet", "chain_id": 80002, "currency": "MATIC"},
-        {"id": "polygon", "name": "Polygon Mainnet", "chain_id": 137, "currency": "MATIC"},
+        {
+            "id": "localhost",
+            "name": "Local Hardhat Node",
+            "chain_id": 31337,
+            "currency": "ETH",
+        },
+        {
+            "id": "sepolia",
+            "name": "Ethereum Sepolia Testnet",
+            "chain_id": 11155111,
+            "currency": "ETH",
+        },
+        {
+            "id": "polygon_amoy",
+            "name": "Polygon Amoy Testnet",
+            "chain_id": 80002,
+            "currency": "MATIC",
+        },
+        {
+            "id": "polygon",
+            "name": "Polygon Mainnet",
+            "chain_id": 137,
+            "currency": "MATIC",
+        },
         {"id": "bsc", "name": "BNB Smart Chain", "chain_id": 56, "currency": "BNB"},
     ]
 

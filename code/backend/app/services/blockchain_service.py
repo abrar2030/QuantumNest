@@ -232,7 +232,9 @@ class BlockchainService:
 
         path = self._deployments_dir() / "abis" / f"{contract_name}.json"
         if not path.exists():
-            logger.warning("No exported artifact found for %s at %s", contract_name, path)
+            logger.warning(
+                "No exported artifact found for %s at %s", contract_name, path
+            )
             self._abi_cache[contract_name] = None
             return None
 
@@ -360,7 +362,9 @@ class BlockchainService:
         factory = w3.eth.contract(abi=abi, bytecode=bytecode)
 
         try:
-            unsent_tx = factory.constructor(*(constructor_args or [])).build_transaction(
+            unsent_tx = factory.constructor(
+                *(constructor_args or [])
+            ).build_transaction(
                 {
                     "from": account.address,
                     "nonce": w3.eth.get_transaction_count(account.address),
@@ -433,14 +437,14 @@ class BlockchainService:
 
     # ── Domain-specific reads ────────────────────────────────────────────
 
-    def get_eth_balance(
-        self, address: str, network: Optional[str] = None
-    ) -> Decimal:
+    def get_eth_balance(self, address: str, network: Optional[str] = None) -> Decimal:
         w3 = self.get_web3(network)
         try:
             wei = w3.eth.get_balance(Web3.to_checksum_address(address))
         except (Web3Exception, ValueError) as exc:
-            raise NetworkUnavailableError(f"Could not fetch ETH balance: {exc}") from exc
+            raise NetworkUnavailableError(
+                f"Could not fetch ETH balance: {exc}"
+            ) from exc
         return Decimal(wei) / Decimal(10**18)
 
     def get_erc20_balance(
@@ -457,7 +461,9 @@ class BlockchainService:
             decimals = contract.functions.decimals().call()
             symbol = contract.functions.symbol().call()
         except (Web3Exception, ValueError) as exc:
-            raise NetworkUnavailableError(f"Could not fetch token balance: {exc}") from exc
+            raise NetworkUnavailableError(
+                f"Could not fetch token balance: {exc}"
+            ) from exc
         return {
             "symbol": symbol,
             "balance": Decimal(raw_balance) / Decimal(10**decimals),

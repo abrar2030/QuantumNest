@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from app.services.blockchain_service import (
-    ContractNotDeployedError,
     NetworkUnavailableError,
     WriteNotConfiguredError,
 )
@@ -87,8 +86,8 @@ def test_wallet_balance_502_when_network_unreachable(
 def test_supported_networks_reports_live_status(client: TestClient, auth_headers: dict):
     mock = _mock_service()
     mock.is_connected.side_effect = lambda network: network == "localhost"
-    mock.known_contracts.side_effect = (
-        lambda network: {"TestToken": "0xabc"} if network == "localhost" else {}
+    mock.known_contracts.side_effect = lambda network: (
+        {"TestToken": "0xabc"} if network == "localhost" else {}
     )
     with patch("app.api.blockchain.get_blockchain_service", return_value=mock):
         resp = client.get("/blockchain/networks", headers=auth_headers)
@@ -167,9 +166,7 @@ def test_deploy_contract_allows_premium_and_above(
     assert db_tx.status == "success"
 
 
-def test_deploy_contract_requires_type_or_abi(
-    client: TestClient, admin_headers: dict
-):
+def test_deploy_contract_requires_type_or_abi(client: TestClient, admin_headers: dict):
     mock = _mock_service()
     with patch("app.api.blockchain.get_blockchain_service", return_value=mock):
         resp = client.post(
@@ -360,8 +357,8 @@ def test_tokenized_assets_falls_back_to_known_deployment(
     what makes a freshly `npm run deploy`-ed chain show up automatically."""
     mock = _mock_service()
     asset_address = "0x" + "9" * 40
-    mock.get_known_contract_address.side_effect = (
-        lambda name, network=None: asset_address if name == "TokenizedAsset" else None
+    mock.get_known_contract_address.side_effect = lambda name, network=None: (
+        asset_address if name == "TokenizedAsset" else None
     )
     mock.get_tokenized_asset_details.return_value = {
         "asset_symbol": "AAPL",
@@ -391,8 +388,8 @@ def test_tokenized_assets_reports_per_contract_errors(
 ):
     mock = _mock_service()
     asset_address = "0x" + "9" * 40
-    mock.get_known_contract_address.side_effect = (
-        lambda name, network=None: asset_address if name == "TokenizedAsset" else None
+    mock.get_known_contract_address.side_effect = lambda name, network=None: (
+        asset_address if name == "TokenizedAsset" else None
     )
     mock.get_tokenized_asset_details.side_effect = NetworkUnavailableError("rpc down")
     with patch("app.api.blockchain.get_blockchain_service", return_value=mock):
